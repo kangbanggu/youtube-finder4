@@ -13,11 +13,11 @@
   .row{display:flex;gap:8px;flex-wrap:wrap}
   input,select,button{padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;font-size:14px;width:100%;box-sizing:border-box}
   button{background:var(--accent);color:#fff;border:none;cursor:pointer;width:auto}
-  /* ✅ PC에서도 필터 간 간격이 안정되도록 수정 */
   .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
   label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
   #results{display:grid;gap:12px;margin-top:12px}
-  .card{background:#fff;border-radius:10px;padding:10px;display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:start;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+  .card{background:#fff;border-radius:10px;padding:10px;display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:start;box-shadow:0 2px 8px rgba(0,0,0,0.04);transition:all 0.2s}
+  .card:hover{transform:scale(1.02);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
   .thumb{width:100%;height:92px;object-fit:cover;border-radius:8px}
   .title{font-weight:700;margin:0 0 6px}
   .meta{font-size:13px;color:#374151}
@@ -166,11 +166,18 @@ async function onSearch(){
   document.getElementById('status').textContent = `${allRows.length}개의 결과`;
 }
 
+/* ✅ 여기만 수정됨 — 클릭 가능하게 개선 */
 function renderCard(r){
-  return `<div class="card">
-    <div><img class="thumb" src="${r.thumbnail}"></div>
-    <div><div class="title">${r.title}</div></div>
-  </div>`;
+  const videoUrl = `https://www.youtube.com/watch?v=${r.id}`;
+  return `
+  <a href="${videoUrl}" target="_blank" style="text-decoration:none;color:inherit;">
+    <div class="card">
+      <div><img class="thumb" src="${r.thumbnail}" alt="thumbnail"></div>
+      <div>
+        <div class="title">${r.title}</div>
+      </div>
+    </div>
+  </a>`;
 }
 </script>
 </body>
