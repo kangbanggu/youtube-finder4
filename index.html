@@ -37,7 +37,7 @@
 <div class="wrap">
   <h1>📈 SmartTube Finder — 벤치마킹</h1>
 
-  <div id="usageCounter">API 사용량: 0회</div>
+  <div id="usageCounter">쿼터 잔여: 10000 / 10000</div>
 
   <div class="box">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -77,12 +77,13 @@
       </div>
     </div>
 
-    <div class="note">설명: 쇼츠 = < 4분, 일반동영상 = ≥ 5분.</div>
+    <div class="note">설명: 쇼츠 = &lt; 4분, 미드폼 = 4분~10분, 롱폼 = ≥ 10분.</div>
   </div>
 
   <div id="results">
     <div class="box"><div class="section-title">🎬 쇼츠 (4분 미만)</div><div id="shorts"></div></div>
-    <div class="box"><div class="section-title">📺 일반동영상 (5분 이상)</div><div id="longs"></div></div>
+    <div class="box"><div class="section-title">⏱ 미드폼 (4 - 10분)</div><div id="mid"></div></div>
+    <div class="box"><div class="section-title">📺 롱폼 (10분 이상)</div><div id="longs"></div></div>
     <div class="box"><div class="section-title">📁 채널 결과</div><div id="channels"></div></div>
   </div>
 
@@ -91,21 +92,60 @@
 </div>
 
 <script>
-const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
-let apiUsage = 0;
+/* ---------- 설정 ---------- */
+const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8"; // 이미 넣어두신 키
+const TOTAL_QUOTA = 10000; // 전체 쿼터
+let usedQuota = 0;         // 사용한 쿼터
 let currentPage = 1;
 const itemsPerPage = 10;
 let allRows = [];
 
-function updateUsage(){
-  document.getElementById("usageCounter").textContent = `API 사용량: ${apiUsage}회`;
+/* ---------- 유틸 ---------- */
+function updateUsageDisplay(){
+  const remain = Math.max(TOTAL_QUOTA - usedQuota, 0);
+  document.getElementById('usageCounter').textContent = `쿼터 잔여: ${remain} / ${TOTAL_QUOTA}`;
+}
+
+function isoToSeconds(iso){
+  if(!iso) return 0;
+  const h = Number((iso.match(/(\d+)H/) || [0,0])[1]||0);
+  const m = Number((iso.match(/(\d+)M/) || [0,0])[1]||0);
+  const s = Number((iso.match(/(\d+)S/) || [0,0])[1]||0);
+  return h*3600 + m*60 + s;
+}
+
+/* ---------- 렌더링 ---------- */
+function renderCard(r){
+  const videoUrl = r.kind === 'channel' ? `https://www.youtube.com/channel/${r.id}` : `https://www.youtube.com/watch?v=${r.id}`;
+  const badge = r.kind==='channel' ? '채널' : (r.isShort ? '쇼츠' : r.isMid ? '미드폼' : '롱폼');
+  const subsText = r.subs !== undefined ? r.subs.toLocaleString() : '-';
+  const viewsText = r.views !== undefined ? r.views.toLocaleString() : '-';
+  const effText = r.efficiency === null ? 'N/A' : Number(r.efficiency).toFixed(2) + 'x';
+  const published = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString() : '-';
+  const thumb = r.thumbnail || '';
+
+  return `
+  <a href="${videoUrl}" target="_blank" style="text-decoration:none;color:inherit;">
+    <div class="card">
+      <div><img class="thumb" src="${thumb}" alt="thumb"></div>
+      <div>
+        <div class="small"><span class="badge">${badge}</span></div>
+        <div class="title">${r.title}</div>
+        <div class="meta small">${r.kind==='video' ? `채널: ${r.channelTitle || ''}` : ''}</div>
+        <div class="meta">조회수: <strong>${viewsText}</strong> · 구독자: <strong>${subsText}</strong></div>
+        <div class="meta">효율: <strong class="${r.efficiency && r.efficiency>=5 ? 'ratio-good' : r.efficiency && r.efficiency<1 ? 'ratio-bad' : ''}">${effText}</strong></div>
+        <div class="meta">업로드: ${published}</div>
+      </div>
+    </div>
+  </a>`;
 }
 
 function renderPage(page){
   const shortsEl = document.getElementById('shorts');
+  const midEl = document.getElementById('mid');
   const longsEl = document.getElementById('longs');
   const channelsEl = document.getElementById('channels');
-  shortsEl.innerHTML = longsEl.innerHTML = channelsEl.innerHTML = "";
+  shortsEl.innerHTML = midEl.innerHTML = longsEl.innerHTML = channelsEl.innerHTML = "";
 
   const start = (page - 1) * itemsPerPage;
   const end = start + itemsPerPage;
@@ -115,6 +155,7 @@ function renderPage(page){
     const html = renderCard(r);
     if(r.kind==='channel') channelsEl.insertAdjacentHTML('beforeend', html);
     else if(r.isShort) shortsEl.insertAdjacentHTML('beforeend', html);
+    else if(r.isMid) midEl.insertAdjacentHTML('beforeend', html);
     else longsEl.insertAdjacentHTML('beforeend', html);
   }
 
@@ -126,8 +167,7 @@ function renderPagination(){
   const container = document.getElementById('pagination');
   container.innerHTML = "";
   if(totalPages <= 1) return;
-
-  for(let i=1; i<=totalPages; i++){
+  for(let i=1;i<=totalPages;i++){
     const btn = document.createElement('button');
     btn.textContent = i;
     if(i === currentPage) btn.style.background = "#e60023";
@@ -136,49 +176,110 @@ function renderPagination(){
   }
 }
 
+/* ---------- 검색 로직 (쿼터 계산 포함) ---------- */
 document.getElementById('searchBtn').addEventListener('click', onSearch);
 
 async function onSearch(){
-  apiUsage++;
-  updateUsage();
   document.getElementById('status').textContent = "검색 중...";
-
   const q = document.getElementById('q').value.trim();
-  if(!q){ alert("검색어를 입력해주세요."); return; }
+  if(!q){ alert('검색어를 입력하세요.'); return; }
 
-  const sUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=30&key=${API_KEY}`;
+  // 1) search.list 호출 (쿼터: 100)
+  usedQuota += 100;
+  updateUsageDisplay();
+
+  const maxResults = Number(document.getElementById('maxResults').value) || 20;
+  const sUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=${maxResults}&key=${API_KEY}`;
   const sRes = await fetch(sUrl);
   const sData = await sRes.json();
+  if(sData.error){ document.getElementById('status').textContent = `오류: ${sData.error.message}`; return; }
 
-  allRows = sData.items.map(it=>{
-    return {
-      id: it.id.videoId,
-      title: it.snippet.title,
-      thumbnail: it.snippet.thumbnails.medium.url,
-      kind: 'video',
-      isShort: Math.random()>0.5,
-      isLong: Math.random()>0.5
+  // collect video IDs and channel IDs
+  const videoIds = [];
+  const channelIds = new Set();
+  for(const it of sData.items || []){
+    if(it.id.kind === 'youtube#video'){
+      videoIds.push(it.id.videoId);
+      if(it.snippet && it.snippet.channelId) channelIds.add(it.snippet.channelId);
+    } else if(it.id.kind === 'youtube#channel'){
+      channelIds.add(it.id.channelId);
     }
-  });
+  }
 
+  // 2) videos.list 호출 (쿼터: 1 per video)
+  if(videoIds.length === 0){
+    allRows = [];
+    currentPage = 1;
+    renderPage(currentPage);
+    document.getElementById('status').textContent = '결과 없음';
+    return;
+  }
+
+  usedQuota += videoIds.length * 1;
+  updateUsageDisplay();
+
+  const vUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds.join(',')}&key=${API_KEY}`;
+  const vRes = await fetch(vUrl);
+  const vData = await vRes.json();
+  if(vData.error){ document.getElementById('status').textContent = `오류: ${vData.error.message}`; return; }
+
+  // 3) channels.list 호출 for subscriber counts (optional, quota 1 per channel)
+  const chList = Array.from(channelIds);
+  let channelsMap = {};
+  if(chList.length){
+    // charge channel quota only if needed
+    usedQuota += chList.length * 1;
+    updateUsageDisplay();
+    const cUrl = `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${chList.join(',')}&key=${API_KEY}`;
+    const cRes = await fetch(cUrl);
+    const cData = await cRes.json();
+    if(!cData.error){
+      for(const c of cData.items || []) channelsMap[c.id] = c;
+    }
+  }
+
+  // 4) 가공: duration 기반 분류 및 rows 생성
+  const rows = [];
+  for(const v of vData.items || []){
+    const durationSec = isoToSeconds(v.contentDetails?.duration);
+    const isShort = durationSec > 0 && durationSec < 4*60;       // < 4분
+    const isMid = durationSec >= 4*60 && durationSec < 10*60;     // 4~10분
+    const isLong = durationSec >= 10*60;                         // >=10분
+    const channelId = v.snippet?.channelId;
+    const ch = channelsMap[channelId] || null;
+    const subs = ch ? Number(ch.statistics.subscriberCount || 0) : undefined;
+    const views = Number(v.statistics?.viewCount || 0);
+    const eff = subs ? (views / subs) : null;
+
+    rows.push({
+      kind: 'video',
+      id: v.id,
+      title: v.snippet.title,
+      thumbnail: v.snippet.thumbnails?.medium?.url || '',
+      channelId,
+      channelTitle: v.snippet.channelTitle,
+      subs,
+      views,
+      efficiency: eff,
+      durationSec,
+      isShort, isMid, isLong,
+      publishedAt: v.snippet.publishedAt
+    });
+  }
+
+  // 채널 타입(검색에서 채널이 포함된 경우) 처리: (필요하면 별도 추가)
+  // 현재 focus는 비디오 위주이므로 채널 결과는 비디오 목록과 별개로 처리하지 않음.
+
+  // 저장 및 렌더
+  allRows = rows;
   currentPage = 1;
   renderPage(currentPage);
+  updateUsageDisplay();
   document.getElementById('status').textContent = `${allRows.length}개의 결과`;
 }
 
-/* ✅ 여기만 수정됨 — 클릭 가능하게 개선 */
-function renderCard(r){
-  const videoUrl = `https://www.youtube.com/watch?v=${r.id}`;
-  return `
-  <a href="${videoUrl}" target="_blank" style="text-decoration:none;color:inherit;">
-    <div class="card">
-      <div><img class="thumb" src="${r.thumbnail}" alt="thumbnail"></div>
-      <div>
-        <div class="title">${r.title}</div>
-      </div>
-    </div>
-  </a>`;
-}
+/* 초기 표시 */
+updateUsageDisplay();
 </script>
 </body>
 </html>
