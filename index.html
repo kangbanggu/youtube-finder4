@@ -1,122 +1,270 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>YouTube Finder Pro</title>
-  <style>
-    body { font-family: Arial; padding: 20px; background: #f9fafb; }
-    input, select, button { margin: 5px; padding: 8px; }
-    .video-card {
-      display: inline-block; vertical-align: top; margin: 10px;
-      width: 260px; background: white; padding: 10px; border-radius: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    img { width: 100%; border-radius: 8px; }
-    #quotaBox { margin-top: 10px; font-weight: bold; color: #444; }
-    #pagination { margin-top: 20px; }
-    button.page { margin: 5px; padding: 8px 12px; background: #2563eb; color: white; border: none; border-radius: 6px; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SmartTube Finder — 벤치마킹</title>
+<style>
+  :root{--accent:#e60023;--muted:#6b7280}
+  body{font-family:Noto Sans KR, Arial, sans-serif;background:#f7fafc;margin:0;padding:18px;color:#111}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{color:var(--accent);text-align:center;margin:6px 0 18px}
+  .box{background:#fff;padding:12px;border-radius:12px;box-shadow:0 4px 18px rgba(10,10,10,0.06);margin-bottom:14px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  input,select,button{padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;font-size:14px}
+  button{background:var(--accent);color:#fff;border:none;cursor:pointer}
+  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+  label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+  #results{display:grid;gap:12px;margin-top:12px}
+  .card{background:#fff;border-radius:10px;padding:10px;display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:start;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+  .thumb{width:100%;height:92px;object-fit:cover;border-radius:8px}
+  .title{font-weight:700;margin:0 0 6px}
+  .meta{font-size:13px;color:#374151}
+  .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;background:#f3f4f6;margin-right:6px}
+  .ratio-good{color:#16a34a;font-weight:700}
+  .ratio-bad{color:#dc2626;font-weight:700}
+  .small{font-size:12px;color:#6b7280}
+  .note{font-size:13px;color:#6b7280;margin-top:6px}
+  @media(max-width:640px){.card{grid-template-columns:120px 1fr}.thumb{height:80px}}
+  .section-title{margin:12px 0 6px;font-weight:700}
+</style>
 </head>
 <body>
-  <h2>📊 YouTube Finder Pro</h2>
-  
-  🔍 검색어:
-  <input id="query" placeholder="예: 복지, 시니어, 건강">
-  <button onclick="searchVideos()">검색</button>
+<div class="wrap">
+  <h1>📈 SmartTube Finder — 벤치마킹</h1>
 
-  <div id="quotaBox">API 사용량: 0 / 10,000</div>
-  <div id="results"></div>
-  <div id="pagination"></div>
+  <div class="box">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input id="q" placeholder="검색어 입력 (예: 복지 사연, 건강, 다이어트)" style="flex:1" />
+      <button id="searchBtn">검색</button>
+    </div>
 
-  <script>
-    const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8"; // 👉 여기에 본인 API키 넣기
-    let nextPageToken = "";
-    let prevPageToken = "";
-    let totalQuota = 10000;
-    let usedQuota = 0;
-    let currentQuery = "";
+    <div style="margin-top:10px" class="filters">
+      <div><label>구분 (타입)</label>
+        <select id="typeFilter"><option value="any">전체</option><option value="video">일반영상</option><option value="shorts">쇼츠</option><option value="live">라이브</option><option value="channel">채널</option></select>
+      </div>
 
-    async function searchVideos(pageToken = "") {
-      const query = document.getElementById("query").value || currentQuery;
-      currentQuery = query;
+      <div><label>업로드 기간</label>
+        <select id="timeFilter"><option value="any">전체</option><option value="today">오늘</option><option value="week">최근 1주</option><option value="month">이번 달</option><option value="3months">3개월</option><option value="6months">6개월</option><option value="year">올해</option></select>
+      </div>
 
-      // search.list 호출 (100 quota)
-      usedQuota += 100;
-      updateQuota();
+      <div><label>조회수 (최소 ~ 최대)</label>
+        <div style="display:flex;gap:6px"><input id="minViews" type="number" placeholder="최소"/><input id="maxViews" type="number" placeholder="최대"/></div>
+      </div>
 
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(query)}&maxResults=6&pageToken=${pageToken}&key=${API_KEY}`;
+      <div><label>구독자 (최소 ~ 최대)</label>
+        <div style="display:flex;gap:6px"><input id="minSubs" type="number" placeholder="최소"/><input id="maxSubs" type="number" placeholder="최대"/></div>
+      </div>
 
-      const res = await fetch(searchUrl);
-      const data = await res.json();
+      <div><label>정렬</label>
+        <select id="sortBy"><option value="ratio">효율순</option><option value="views">조회수 순</option><option value="subs">구독자 순</option></select>
+      </div>
 
-      nextPageToken = data.nextPageToken || "";
-      prevPageToken = data.prevPageToken || "";
+      <div><label>결과 갯수</label>
+        <select id="maxResults"><option value="10">10</option><option value="20" selected>20</option><option value="30">30</option></select>
+      </div>
+    </div>
+    <div class="note">설명: 쇼츠 = < 4분, 일반동영상 = ≥ 5분, 4:00~4:59 구간은 '중간'으로 따로 표시됩니다.</div>
+  </div>
 
-      const videoIds = data.items.map(i => i.id.videoId).join(",");
-      
-      // videos.list 호출 (1 quota × 영상 수)
-      usedQuota += data.items.length;
-      updateQuota();
+  <!-- 섹션별 결과 표시 -->
+  <div id="results">
+    <div class="box"><div class="section-title">🎬 쇼츠 (4분 미만)</div><div id="shorts" style="display:grid;gap:8px"></div></div>
+    <div class="box"><div class="section-title">⏸ 4-5분 (중간)</div><div id="mid" style="display:grid;gap:8px"></div></div>
+    <div class="box"><div class="section-title">📺 일반동영상 (5분 이상)</div><div id="longs" style="display:grid;gap:8px"></div></div>
+    <div class="box"><div class="section-title">📁 채널 결과</div><div id="channels" style="display:grid;gap:8px"></div></div>
+  </div>
 
-      const videoRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${videoIds}&key=${API_KEY}`);
-      const videoData = await videoRes.json();
+  <div id="status" class="small" style="margin-top:10px"></div>
+</div>
 
-      displayResults(videoData.items);
-      updatePagination();
-    }
+<script>
+/* --------- 반드시 여기에 본인 API 키 넣기 --------- */
+const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
+/* ------------------------------------------------- */
 
-    function displayResults(videos) {
-      const container = document.getElementById("results");
-      container.innerHTML = "";
-      videos.forEach(v => {
-        const duration = parseDuration(v.contentDetails.duration);
-        const viewCount = Number(v.statistics.viewCount).toLocaleString();
-        const subs = v.statistics.subscriberCount ? v.statistics.subscriberCount : "N/A";
-        const ratio = v.statistics.viewCount / (v.statistics.subscriberCount || 1);
-        const efficiency = ratio.toFixed(2);
+// 유틸: 업로드 기간 -> publishedAfter ISO
+function getPublishedAfter(period){
+  if(!period || period === "any") return "";
+  const now = new Date();
+  if(period === "today") now.setDate(now.getDate()-1);
+  if(period === "week") now.setDate(now.getDate()-7);
+  if(period === "month") now.setMonth(now.getMonth()-1);
+  if(period === "3months") now.setMonth(now.getMonth()-3);
+  if(period === "6months") now.setMonth(now.getMonth()-6);
+  if(period === "year") now.setFullYear(now.getFullYear()-1);
+  return now.toISOString();
+}
 
-        const div = document.createElement("div");
-        div.className = "video-card";
-        div.innerHTML = `
-          <img src="${v.snippet.thumbnails.medium.url}" alt="thumb">
-          <h4>${v.snippet.title}</h4>
-          <p>조회수: ${viewCount}</p>
-          <p>영상길이: ${duration}</p>
-          <p>조회 효율: ${efficiency}</p>
-        `;
-        container.appendChild(div);
-      });
-    }
+// ISO duration -> seconds (간단 파서)
+function isoToSeconds(iso){
+  if(!iso) return 0;
+  const h = (iso.match(/(\d+)H/) || [0,0])[1]||0;
+  const m = (iso.match(/(\d+)M/) || [0,0])[1]||0;
+  const s = (iso.match(/(\d+)S/) || [0,0])[1]||0;
+  return Number(h)*3600 + Number(m)*60 + Number(s);
+}
 
-    function updatePagination() {
-      const pagediv = document.getElementById("pagination");
-      pagediv.innerHTML = "";
-      if (prevPageToken) {
-        const prev = document.createElement("button");
-        prev.className = "page";
-        prev.textContent = "이전 페이지";
-        prev.onclick = () => searchVideos(prevPageToken);
-        pagediv.appendChild(prev);
+document.getElementById('q').addEventListener('keydown', e=>{ if(e.key === 'Enter') document.getElementById('searchBtn').click(); });
+document.getElementById('searchBtn').addEventListener('click', onSearch);
+
+async function onSearch(){
+  const q = document.getElementById('q').value.trim();
+  if(!q){ alert("검색어를 입력해주세요."); return; }
+  const type = document.getElementById('typeFilter').value;
+  const time = document.getElementById('timeFilter').value;
+  const minV = Number(document.getElementById('minViews').value) || 0;
+  const maxV = Number(document.getElementById('maxViews').value) || Infinity;
+  const minS = Number(document.getElementById('minSubs').value) || 0;
+  const maxS = Number(document.getElementById('maxSubs').value) || Infinity;
+  const sortBy = document.getElementById('sortBy').value;
+  const maxResults = Number(document.getElementById('maxResults').value) || 20;
+
+  // 초기화
+  document.getElementById('shorts').innerHTML = "";
+  document.getElementById('mid').innerHTML = "";
+  document.getElementById('longs').innerHTML = "";
+  document.getElementById('channels').innerHTML = "";
+  document.getElementById('status').textContent = "검색 중... (API 요청이 순차적으로 진행됩니다)";
+
+  try{
+    // 1) search 엔드포인트로 후보 가져오기
+    let searchType = "video";
+    let eventType = "";
+    if(type === "channel") searchType = "channel";
+    if(type === "live"){ searchType = "video"; eventType="&eventType=live"; }
+    // search: q, type, maxResults, publishedAfter
+    const publishedAfter = getPublishedAfter(time);
+    let sUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=${searchType}&q=${encodeURIComponent(q)}&maxResults=${maxResults}&key=${API_KEY}${eventType}`;
+    if(publishedAfter) sUrl += `&publishedAfter=${encodeURIComponent(publishedAfter)}`;
+    const sRes = await fetch(sUrl);
+    const sData = await sRes.json();
+    if(sData.error) throw new Error(sData.error.message || "Search API error");
+
+    // 모음
+    const videoIds = [];
+    const channelIds = new Set();
+
+    for(const it of sData.items || []){
+      if(it.id.kind === "youtube#video"){
+        videoIds.push(it.id.videoId);
+        if(it.snippet && it.snippet.channelId) channelIds.add(it.snippet.channelId);
+      } else if(it.id.kind === "youtube#channel"){
+        channelIds.add(it.id.channelId);
       }
-      if (nextPageToken) {
-        const next = document.createElement("button");
-        next.className = "page";
-        next.textContent = "다음 페이지";
-        next.onclick = () => searchVideos(nextPageToken);
-        pagediv.appendChild(next);
+    }
+
+    // 2) videos 상세(통계+contentDetails) 가져오기
+    const videosMap = {};
+    if(videoIds.length){
+      const vUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${videoIds.join(',')}&key=${API_KEY}`;
+      const vRes = await fetch(vUrl);
+      const vData = await vRes.json();
+      if(vData.error) throw new Error(vData.error.message || "Videos API error");
+      for(const v of vData.items || []) videosMap[v.id] = v;
+    }
+
+    // 3) channels 상세 가져오기
+    const channelsMap = {};
+    if(channelIds.size){
+      const cList = Array.from(channelIds).join(',');
+      const cUrl = `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${cList}&key=${API_KEY}`;
+      const cRes = await fetch(cUrl);
+      const cData = await cRes.json();
+      if(cData.error) throw new Error(cData.error.message || "Channels API error");
+      for(const c of cData.items || []) channelsMap[c.id] = c;
+    }
+
+    // 4) 가공 및 필터링
+    const rows = [];
+    for(const it of sData.items || []){
+      if(it.id.kind === "youtube#channel"){
+        const cid = it.id.channelId;
+        const ch = channelsMap[cid];
+        if(!ch) continue;
+        const subs = Number(ch.statistics.subscriberCount || 0);
+        const totalViews = Number(ch.statistics.viewCount || 0);
+        if(subs < minS || subs > maxS || totalViews < minV || totalViews > maxV) continue;
+        rows.push({kind:'channel', id:cid, title:ch.snippet.title, thumbnail:ch.snippet.thumbnails?.medium?.url || '', subs, views: totalViews, efficiency: subs?totalViews/subs:null, publishedAt: null});
+      } else if(it.id.kind === "youtube#video"){
+        const vid = it.id.videoId;
+        const v = videosMap[vid];
+        if(!v) continue;
+        const channelId = v.snippet.channelId;
+        const ch = channelsMap[channelId] || null;
+        const videoViews = Number(v.statistics.viewCount || 0);
+        const durationSec = isoToSeconds(v.contentDetails?.duration);
+        const isShort = durationSec > 0 && durationSec < 4*60; // < 4분
+        const isLong = durationSec >= 5*60; // >= 5분
+        const isMid = !isShort && !isLong; // 4:00 ~ 4:59
+        const subs = ch ? Number(ch.statistics.subscriberCount || 0) : 0;
+        if(videoViews < minV || videoViews > maxV) continue;
+        if(subs < minS || subs > maxS) continue;
+        rows.push({kind:'video', id:vid, title:v.snippet.title, thumbnail:v.snippet.thumbnails?.medium?.url || '', subs, views:videoViews, efficiency: subs?videoViews/subs:null, durationSec, isShort, isMid, isLong, channelId, channelTitle:v.snippet.channelTitle, publishedAt: v.snippet.publishedAt});
       }
     }
 
-    function updateQuota() {
-      document.getElementById("quotaBox").textContent = `API 사용량: ${usedQuota} / ${totalQuota}`;
+    // 5) 정렬
+    rows.sort((a,b)=>{
+      if(sortBy === 'views') return (b.views||0)-(a.views||0);
+      if(sortBy === 'subs') return (b.subs||0)-(a.subs||0);
+      // efficiency
+      const ra = a.efficiency||0; const rb = b.efficiency||0;
+      return rb-ra;
+    });
+
+    // 6) 렌더링: 섹션별로 나누어 표시
+    const shortsEl = document.getElementById('shorts');
+    const midEl = document.getElementById('mid');
+    const longsEl = document.getElementById('longs');
+    const channelsEl = document.getElementById('channels');
+    let count = 0;
+
+    for(const r of rows){
+      if(r.kind === 'channel'){
+        const html = renderCard(r,'channel');
+        channelsEl.insertAdjacentHTML('beforeend', html);
+        count++;
+      } else if(r.kind === 'video'){
+        const html = renderCard(r,'video');
+        if(r.isShort) shortsEl.insertAdjacentHTML('beforeend', html);
+        else if(r.isMid) midEl.insertAdjacentHTML('beforeend', html);
+        else if(r.isLong) longsEl.insertAdjacentHTML('beforeend', html);
+        count++;
+      }
     }
 
-    function parseDuration(duration) {
-      const match = duration.match(/PT(\d+M)?(\d+S)?/);
-      const mins = match[1] ? match[1].replace("M", "") : "0";
-      const secs = match[2] ? match[2].replace("S", "") : "0";
-      return `${mins}분 ${secs}초`;
-    }
-  </script>
+    document.getElementById('status').textContent = `완료 — 결과 ${count}개 (API 사용량에 유의하세요)`;
+
+  }catch(err){
+    console.error(err);
+    document.getElementById('status').textContent = `오류: ${err.message || err}`;
+    document.getElementById('shorts').innerHTML = '';
+    document.getElementById('mid').innerHTML = '';
+    document.getElementById('longs').innerHTML = '';
+    document.getElementById('channels').innerHTML = '';
+  }
+}
+
+function renderCard(r, type){
+  const eff = r.efficiency===null ? 'N/A' : Number(r.efficiency).toFixed(2) + 'x';
+  const badge = r.kind==='channel' ? '<span class="badge">채널</span>' : (r.isShort ? '<span class="badge">쇼츠</span>' : r.isMid ? '<span class="badge">4-5분</span>' : '<span class="badge">동영상</span>');
+  const published = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString() : '-';
+  const thumbnail = r.thumbnail || '';
+  const link = r.kind==='channel' ? `https://www.youtube.com/channel/${r.id}` : `https://www.youtube.com/watch?v=${r.id}`;
+  return `<div class="card">
+    <div><img class="thumb" src="${thumbnail}" alt="thumb"></div>
+    <div>
+      <div class="small">${badge}</div>
+      <div class="title">${r.title}</div>
+      <div class="meta small">${r.kind==='video' ? `채널: ${r.channelTitle || ''}` : ''}</div>
+      <div class="meta">조회수: <strong>${(r.views||0).toLocaleString()}</strong> · 구독자: <strong>${(r.subs||0).toLocaleString()}</strong></div>
+      <div class="meta">효율: <strong class="${r.efficiency && r.efficiency>=5 ? 'ratio-good' : r.efficiency && r.efficiency<1 ? 'ratio-bad' : ''}">${eff}</strong></div>
+      <div class="meta">업로드: ${published}</div>
+      <div style="margin-top:8px"><a href="${link}" target="_blank"><button>유튜브에서 보기</button></a></div>
+    </div>
+  </div>`;
+}
+</script>
 </body>
 </html>
