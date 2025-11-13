@@ -11,9 +11,10 @@
   h1{color:var(--accent);text-align:center;margin:6px 0 18px}
   .box{background:#fff;padding:12px;border-radius:12px;box-shadow:0 4px 18px rgba(10,10,10,0.06);margin-bottom:14px}
   .row{display:flex;gap:8px;flex-wrap:wrap}
-  input,select,button{padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;font-size:14px}
-  button{background:var(--accent);color:#fff;border:none;cursor:pointer}
-  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+  input,select,button{padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;font-size:14px;width:100%;box-sizing:border-box}
+  button{background:var(--accent);color:#fff;border:none;cursor:pointer;width:auto}
+  /* ✅ PC에서도 필터 간 간격이 안정되도록 수정 */
+  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
   label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
   #results{display:grid;gap:12px;margin-top:12px}
   .card{background:#fff;border-radius:10px;padding:10px;display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:start;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
@@ -36,7 +37,7 @@
 <div class="wrap">
   <h1>📈 SmartTube Finder — 벤치마킹</h1>
 
-  <div id="usageCounter">API 사용량: 0회</div> <!-- ✅ 사용량 표시 추가 -->
+  <div id="usageCounter">API 사용량: 0회</div>
 
   <div class="box">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -54,11 +55,17 @@
       </div>
 
       <div><label>조회수 (최소 ~ 최대)</label>
-        <div style="display:flex;gap:6px"><input id="minViews" type="number" placeholder="최소"/><input id="maxViews" type="number" placeholder="최대"/></div>
+        <div style="display:flex;gap:6px">
+          <input id="minViews" type="number" placeholder="최소"/>
+          <input id="maxViews" type="number" placeholder="최대"/>
+        </div>
       </div>
 
       <div><label>구독자 (최소 ~ 최대)</label>
-        <div style="display:flex;gap:6px"><input id="minSubs" type="number" placeholder="최소"/><input id="maxSubs" type="number" placeholder="최대"/></div>
+        <div style="display:flex;gap:6px">
+          <input id="minSubs" type="number" placeholder="최소"/>
+          <input id="maxSubs" type="number" placeholder="최대"/>
+        </div>
       </div>
 
       <div><label>정렬</label>
@@ -69,22 +76,22 @@
         <select id="maxResults"><option value="10">10</option><option value="20" selected>20</option><option value="30">30</option></select>
       </div>
     </div>
-    <div class="note">설명: 쇼츠 = < 4분, 일반동영상 = ≥ 5분, 4:00~4:59 구간은 '중간'으로 따로 표시됩니다.</div>
+
+    <div class="note">설명: 쇼츠 = < 4분, 일반동영상 = ≥ 5분.</div>
   </div>
 
   <div id="results">
     <div class="box"><div class="section-title">🎬 쇼츠 (4분 미만)</div><div id="shorts"></div></div>
-    <div class="box"><div class="section-title">⏸ 4-5분 (중간)</div><div id="mid"></div></div>
     <div class="box"><div class="section-title">📺 일반동영상 (5분 이상)</div><div id="longs"></div></div>
     <div class="box"><div class="section-title">📁 채널 결과</div><div id="channels"></div></div>
   </div>
 
-  <div class="pagination" id="pagination"></div> <!-- ✅ 페이지 번호 표시 추가 -->
+  <div class="pagination" id="pagination"></div>
   <div id="status" class="small" style="margin-top:10px"></div>
 </div>
 
 <script>
-const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8"; // 본인 API 키 입력
+const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
 let apiUsage = 0;
 let currentPage = 1;
 const itemsPerPage = 10;
@@ -94,23 +101,20 @@ function updateUsage(){
   document.getElementById("usageCounter").textContent = `API 사용량: ${apiUsage}회`;
 }
 
-// 페이지 렌더링
 function renderPage(page){
   const shortsEl = document.getElementById('shorts');
-  const midEl = document.getElementById('mid');
   const longsEl = document.getElementById('longs');
   const channelsEl = document.getElementById('channels');
-  shortsEl.innerHTML = midEl.innerHTML = longsEl.innerHTML = channelsEl.innerHTML = "";
+  shortsEl.innerHTML = longsEl.innerHTML = channelsEl.innerHTML = "";
 
   const start = (page - 1) * itemsPerPage;
   const end = start + itemsPerPage;
   const pageItems = allRows.slice(start, end);
 
   for(const r of pageItems){
-    const html = renderCard(r,'video');
+    const html = renderCard(r);
     if(r.kind==='channel') channelsEl.insertAdjacentHTML('beforeend', html);
     else if(r.isShort) shortsEl.insertAdjacentHTML('beforeend', html);
-    else if(r.isMid) midEl.insertAdjacentHTML('beforeend', html);
     else longsEl.insertAdjacentHTML('beforeend', html);
   }
 
@@ -152,8 +156,7 @@ async function onSearch(){
       title: it.snippet.title,
       thumbnail: it.snippet.thumbnails.medium.url,
       kind: 'video',
-      isShort: Math.random()>0.5, // 예시용 (실제는 duration 기반)
-      isMid: false,
+      isShort: Math.random()>0.5,
       isLong: Math.random()>0.5
     }
   });
