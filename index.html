@@ -151,7 +151,7 @@ async function search(pageToken = "") {
     const keyword = document.getElementById("keyword").value.trim();
     if (!keyword) return alert("검색어를 입력하세요.");
 
-    let url = `https://www.googleapis.com/youtube/v3/search?key=YOUR_API_KEY&part=snippet&type=video&q=${encodeURIComponent(keyword)}&maxResults=10&pageToken=${pageToken}`;
+    let url = `https://www.googleapis.com/youtube/v3/search?key=AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8&part=snippet&type=video&q=${encodeURIComponent(keyword)}&maxResults=10&pageToken=${pageToken}`;
 
     const data = await fetchAPI(url);
 
@@ -167,7 +167,7 @@ async function search(pageToken = "") {
     }
 
     const videoInfo = await fetchAPI(
-        `https://www.googleapis.com/youtube/v3/videos?key=YOUR_API_KEY&part=snippet,statistics&id=${ids}`
+        `https://www.googleapis.com/youtube/v3/videos?key=AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8&part=snippet,statistics&id=${ids}`
     );
 
     videoData = videoInfo.items.map(v => ({
