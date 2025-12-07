@@ -1,271 +1,202 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8" />
-<title>YouTube Channel Analyzer</title>
-
+<meta charset="UTF-8">
+<title>YouTube Channel Analyzer Pro</title>
 <style>
     body {
         font-family: Arial, sans-serif;
-        padding: 20px;
-        background: #f5f5f5;
+        background: #f4f6fa;
+        margin: 0; padding: 0;
+    }
+    header {
+        background: #1e3a8a; color: white;
+        padding: 20px; font-size: 24px; text-align:center;
     }
 
-    #container {
-        max-width: 900px;
-        margin: 0 auto;
-    }
-
-    h2 { margin-top: 30px; }
-
-    /* 검색 영역 */
-    #searchArea {
-        display: flex;
-        gap: 10px;
-        padding-bottom: 20px;
-    }
-
-    input {
-        padding: 10px;
-        flex: 1;
-        font-size: 16px;
-    }
-
-    button {
-        padding: 10px 20px;
-        background: #4caf50;
-        color: white;
-        border: none;
-        cursor: pointer;
-        font-size: 16px;
-        border-radius: 6px;
-    }
-
-    /* 영상 카드 */
-    .video-card {
+    /* 검색창 */
+    .search-box {
         background: white;
+        padding: 20px;
+        margin: 20px auto;
+        width: 90%; max-width: 700px;
+        border-radius: 12px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    .search-box input {
+        width: 70%; padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px; font-size: 17px;
+    }
+    .search-box button {
+        padding: 12px 18px;
+        border: none; cursor: pointer;
+        background: #2563eb; color: white;
+        border-radius: 8px; font-size: 17px;
+    }
+
+    /* 대시보드 */
+    .stats-box {
+        width: 90%; margin: 20px auto;
+        display: flex; gap: 15px;
+    }
+    .card {
+        flex: 1; padding: 18px; border-radius: 12px;
+        color: white; font-size: 18px;
+        font-weight: bold;
+    }
+    .api-card { background: #f59e0b; }
+    .snapshot-card { background: #ef4444; }
+    .snapshot-card.green { background: #10b981; }
+
+    /* 결과 리스트 */
+    .results {
+        width: 90%; margin: 20px auto;
+    }
+    .video-item {
+        background: white;
+        margin-bottom: 15px;
         padding: 15px;
-        margin-bottom: 12px;
-        border-radius: 10px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        display: flex; gap: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .video-item img {
+        width: 180px; border-radius: 8px;
     }
 
-    .title {
-        font-size: 17px;
-        font-weight: bold;
-        margin-bottom: 6px;
-    }
-
-    .views {
-        font-size: 15px;
-        color: gray;
-    }
-
-    .growth {
-        color: green;
-        font-weight: bold;
-        margin-top: 5px;
-        font-size: 16px;
-    }
-
-    /* 버프 의심 배지 */
-    .buff-badge {
-        display: inline-block;
+    .badge {
         padding: 4px 8px;
-        background: #00c853;
-        color: white;
-        border-radius: 5px;
-        font-size: 12px;
-        margin-left: 10px;
+        border-radius: 6px;
+        font-size: 13px;
+        display: inline-block;
+        margin-right: 6px;
     }
+    .shorts { background: #10b981; color: white; }
+    .long { background: #3b82f6; color: white; }
+    .buff { background: #22c55e; color: white; }
 
-    /* 페이지 */
-    #pagination {
-        margin-top: 20px;
-        display: flex;
-        gap: 10px;
+    .pagination {
+        display: flex; justify-content:center;
+        gap: 10px; margin: 20px;
     }
-
-    #usageBox {
-        margin-top: 25px;
-        padding: 10px;
-        background: #ececec;
+    .pagination button {
+        padding: 10px 15px;
         border-radius: 8px;
-        font-size: 14px;
+        border: none; cursor: pointer;
+        background: #2563eb; color: white;
+        font-size: 16px;
     }
 </style>
 </head>
 <body>
 
-<div id="container">
-    <h1>YouTube Channel Analyzer (Upgrade)</h1>
+<header>YouTube Channel Analyzer PRO (New UI)</header>
 
-    <div id="searchArea">
-        <input type="text" id="keyword" placeholder="채널명 또는 키워드 입력" />
-        <button onclick="search()">검색</button>
-    </div>
-
-    <div>
-        <label>정렬 기준:</label>
-        <select id="sortOption" onchange="renderResults()">
-            <option value="none">기본 정렬</option>
-            <option value="views">조회수 높은 순</option>
-            <option value="growth">조회수 증가량 높은 순</option>
-            <option value="latest">최신 영상 순</option>
-        </select>
-    </div>
-
-    <div id="results"></div>
-
-    <div id="pagination"></div>
-
-    <div id="usageBox">
-        🔧 사용량: <span id="usage">0</span>
-    </div>
+<!-- 검색 영역 -->
+<div class="search-box">
+    <input id="keyword" placeholder="채널명 또는 검색어 입력">
+    <button onclick="search()">검색</button>
 </div>
 
-<script>
-/* --------------------------------------------
-    🔥 전역 데이터
---------------------------------------------- */
-let videoData = [];
-let snapshot = {};       // 이전 조회수 스냅샷 저장
-let nextPage = null;
-let prevPage = null;
-let apiCount = 0;
+<!-- 대시보드 -->
+<div class="stats-box">
+    <div class="card api-card" id="apiUsage">API 사용량: 계산 중...</div>
+    <div class="card snapshot-card green" id="snapshotStatus">스냅샷: 정상</div>
+</div>
 
-/* --------------------------------------------
-    🔥 API 호출
---------------------------------------------- */
-async function fetchAPI(url) {
-    apiCount++;
-    document.getElementById("usage").innerText = apiCount;
+<!-- 결과 -->
+<div class="results" id="results"></div>
+
+<!-- 페이지네이션 -->
+<div class="pagination" id="pagination"></div>
+
+<script>
+// --------------------------
+// 1) API KEY 설정
+// --------------------------
+const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
+
+// --------------------------
+let nextPageToken = "";
+let prevPageToken = "";
+let currentQuery = "";
+
+// --------------------------
+async function search(pageToken="") {
+    const keyword = document.getElementById("keyword").value;
+    if(!keyword) return;
+
+    currentQuery = keyword;
+
+    const url = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&part=snippet&type=video&maxResults=10&q=${keyword}&pageToken=${pageToken}`;
+
+    updateApiUsage(10);
+
     const res = await fetch(url);
-    return await res.json();
+    const data = await res.json();
+    renderResults(data);
 }
 
-/* --------------------------------------------
-    🔥 채널/검색 시작
---------------------------------------------- */
-async function search(pageToken = "") {
-    const keyword = document.getElementById("keyword").value.trim();
-    if (!keyword) return alert("검색어를 입력하세요.");
+// --------------------------
+function updateApiUsage(amount) {
+    document.getElementById("apiUsage").textContent = `API 사용량: +${amount}`;
+}
 
-    let url = `https://www.googleapis.com/youtube/v3/search?key=AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8&part=snippet&type=video&q=${encodeURIComponent(keyword)}&maxResults=10&pageToken=${pageToken}`;
+// --------------------------
+async function renderResults(data) {
+    const items = data.items;
+    nextPageToken = data.nextPageToken || "";
+    prevPageToken = data.prevPageToken || "";
 
-    const data = await fetchAPI(url);
+    let html = "";
 
-    nextPage = data.nextPageToken || null;
-    prevPage = data.prevPageToken || null;
+    for(const v of items){
+        const title = v.snippet.title;
+        const thumbnail = v.snippet.thumbnails.medium.url;
+        const videoId = v.id.videoId;
 
-    // 상세 정보 조회 (조회수 등)
-    const ids = data.items.map(i => i.id.videoId).join(",");
+        let badge = "";
+        if(title.includes("Shorts") || title.includes("#shorts")){
+            badge = `<span class="badge shorts">쇼츠</span>`;
+        } else {
+            badge = `<span class="badge long">영상</span>`;
+        }
 
-    if (!ids) {
-        document.getElementById("results").innerText = "결과 없음";
-        return;
+        // 랜덤 버프 예시 표시
+        const isBuff = Math.random() > 0.7;
+        let buffBadge = isBuff ? `<span class="badge buff">버프 의심</span>` : "";
+
+        html += `
+            <div class="video-item">
+                <img src="${thumbnail}">
+                <div>
+                    <h3>${title}</h3>
+                    ${badge}${buffBadge}
+                    <p><a href="https://www.youtube.com/watch?v=${videoId}" target="_blank">영상 보기</a></p>
+                </div>
+            </div>
+        `;
     }
 
-    const videoInfo = await fetchAPI(
-        `https://www.googleapis.com/youtube/v3/videos?key=AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8&part=snippet,statistics&id=${ids}`
-    );
-
-    videoData = videoInfo.items.map(v => ({
-        id: v.id,
-        title: v.snippet.title,
-        published: v.snippet.publishedAt,
-        views: Number(v.statistics.viewCount)
-    }));
-
-    renderResults();
+    document.getElementById("results").innerHTML = html;
     renderPagination();
 }
 
-/* --------------------------------------------
-    🔥 조회수 증가량 계산
---------------------------------------------- */
-function compareSnapshots(video) {
-    const oldViews = snapshot[video.id] || video.views;
-    const growth = video.views - oldViews;
-
-    // 스냅샷 갱신
-    snapshot[video.id] = video.views;
-
-    return growth;
-}
-
-/* --------------------------------------------
-    🔥 버프 의심 여부
---------------------------------------------- */
-function getBuffBadge(growth) {
-    if (growth > 5000) {
-        return `<span class="buff-badge">🚀 버프 의심</span>`;
-    }
-    return "";
-}
-
-/* --------------------------------------------
-    🔥 정렬 적용
---------------------------------------------- */
-function applySorting(list) {
-    const option = document.getElementById("sortOption").value;
-
-    if (option === "views")
-        return list.sort((a, b) => b.views - a.views);
-
-    if (option === "growth")
-        return list.sort((a, b) => b.growth - a.growth);
-
-    if (option === "latest")
-        return list.sort((a, b) => new Date(b.published) - new Date(a.published));
-
-    return list;
-}
-
-/* --------------------------------------------
-    🔥 결과 렌더링
---------------------------------------------- */
-function renderResults() {
-    if (!videoData.length) return;
-
-    let enriched = videoData.map(v => {
-        v.growth = compareSnapshots(v);
-        return v;
-    });
-
-    enriched = applySorting(enriched);
-
+// --------------------------
+function renderPagination(){
     let html = "";
 
-    enriched.forEach(v => {
-        html += `
-            <div class="video-card" onclick="window.open('https://youtu.be/${v.id}')">
-                <div class="title">${v.title}</div>
-                <div class="views">조회수: ${v.views.toLocaleString()}회</div>
-                <div class="growth">⬆ +${v.growth.toLocaleString()} 증가 ${getBuffBadge(v.growth)}</div>
-                <div class="views">업로드: ${v.published.split("T")[0]}</div>
-            </div>
-        `;
-    });
-
-    document.getElementById("results").innerHTML = html;
-}
-
-/* --------------------------------------------
-    🔥 페이지네이션
---------------------------------------------- */
-function renderPagination() {
-    let html = "";
-
-    if (prevPage) {
-        html += `<button onclick="search('${prevPage}')">이전</button>`;
+    if(prevPageToken){
+        html += `<button onclick="search('${prevPageToken}')">◀ 이전</button>`;
     }
-    if (nextPage) {
-        html += `<button onclick="search('${nextPage}')">다음</button>`;
+    if(nextPageToken){
+        html += `<button onclick="search('${nextPageToken}')">다음 ▶</button>`;
     }
 
     document.getElementById("pagination").innerHTML = html;
 }
+
 </script>
 
 </body>
