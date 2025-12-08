@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SmartTube Finder — 통합버전</title>
+<title>SmartTube Finder — 통합(기존스타일 유지)</title>
 <style>
   :root{--accent:#e60023;--muted:#6b7280}
   body{font-family:Noto Sans KR, Arial, sans-serif;background:#f7fafc;margin:0;padding:18px;color:#111}
@@ -11,7 +11,7 @@
   h1{color:var(--accent);text-align:center;margin:6px 0 18px}
   .box{background:#fff;padding:12px;border-radius:12px;box-shadow:0 4px 18px rgba(10,10,10,0.06);margin-bottom:14px}
   .row{display:flex;gap:8px;flex-wrap:wrap}
-  input,select,button{padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;font-size:14px;width:100%;box-sizing:border-box}
+  input,select,button,textarea{padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;font-size:14px;width:100%;box-sizing:border-box}
   button{background:var(--accent);color:#fff;border:none;cursor:pointer;width:auto}
   .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
   label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
@@ -37,22 +37,38 @@
   .buff-badge { display:inline-block; background:#dcfce7; color:#046c4e; padding:4px 8px; border-radius:6px; font-weight:700; margin-left:8px; }
   .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
   .small-btn { padding:6px 8px; font-size:13px; border-radius:8px; background:#efefef; color:#111; border:1px solid #ddd; cursor:pointer; }
+  .muted { color:#6b7280; font-size:13px; }
+  .inline { display:inline-flex; gap:8px; align-items:center; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>📈 SmartTube Finder — 통합(기존스타일 유지)</h1>
 
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-    <div class="controls">
-      <button id="saveSnapshotBtn" class="small-btn">스냅샷 저장</button>
-      <button id="clearSnapshotBtn" class="small-btn">스냅샷 초기화</button>
-      <label class="small muted" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="autoSave" checked/> 자동 저장</label>
-      <label class="small muted" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="useSnapshotCompare" checked/> 이전 스냅샷 비교</label>
+  <!-- 상단 컨트롤: API 키 입력/스냅샷/쿼터 -->
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+    <div style="flex:1;min-width:260px">
+      <label style="font-size:13px;color:#374151;margin-bottom:6px;display:block">🔑 YouTube API Key 입력창 — 여기에 키를 붙여넣으세요</label>
+      <div style="display:flex;gap:8px">
+        <input id="apiKeyInput" placeholder="AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8" />
+        <button id="applyApiKeyBtn" style="min-width:120px">API 키 적용</button>
+      </div>
+      <div class="small muted" style="margin-top:6px">※ 적용 후 검색을 실행하세요. API 키는 로컬(브라우저)에만 저장되지 않습니다.</div>
     </div>
-    <div id="usageCounter">쿼터 잔여: 10000 / 10000</div>
+
+    <div style="min-width:320px;display:flex;justify-content:flex-end;gap:10px;align-items:center">
+      <div class="controls">
+        <button id="saveSnapshotBtn" class="small-btn">스냅샷 저장</button>
+        <button id="loadSnapshotBtn" class="small-btn">스냅샷 불러오기</button>
+        <button id="clearSnapshotBtn" class="small-btn">스냅샷 초기화</button>
+        <label class="small muted" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="autoSave" checked/> 자동 저장</label>
+        <label class="small muted" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="useSnapshotCompare" checked/> 이전 스냅샷 비교</label>
+      </div>
+      <div id="usageCounter">쿼터 잔여: 10000 / 10000</div>
+    </div>
   </div>
 
+  <!-- 검색 박스 / 필터 -->
   <div class="box">
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <input id="q" placeholder="검색어 입력 (예: 복지 사연, 건강, 다이어트)" style="flex:1" />
@@ -81,21 +97,18 @@
       </div>
 
       <div><label>정렬</label>
-        <select id="sortBy"><option value="score">효율순(가중치)</option><option value="views">조회수 순</option><option value="growth">조회수 증가량</option><option value="latest">최신순</option></select>
+        <select id="sortBy"><option value="score">효율순</option><option value="views">조회수 순</option><option value="growth">조회수 증가량</option><option value="latest">최신순</option></select>
       </div>
 
       <div><label>결과 갯수</label>
         <select id="maxResults"><option value="10">10</option><option value="20" selected>20</option><option value="30">30</option></select>
       </div>
-
-      <div><label>가중치 (영상길이)</label>
-        <div style="display:flex;gap:6px"><input id="shortWeight" type="number" value="1" step="0.1" title="쇼츠 가중치"/>쇼츠 가중치 &nbsp; <input id="longWeight" type="number" value="1" step="0.1" title="롱폼 가중치"/>롱폼 가중치</div>
-      </div>
     </div>
 
-    <div class="note">설명: 쇼츠 = &lt; 4분, 롱폼 = ≥ 10분. (미드폼 결과는 출력하지 않습니다.)</div>
+    <div class="note">설명: 쇼츠 = &lt; 4분, 롱폼 = ≥ 10분. (미드폼은 결과에서 제외되어 표시되지 않습니다.)</div>
   </div>
 
+  <!-- 결과 영역 -->
   <div id="results">
     <div class="box"><div class="section-title">🎬 쇼츠 (4분 미만)</div><div id="shorts"></div></div>
     <div class="box"><div class="section-title">📺 롱폼 (10분 이상)</div><div id="longs"></div></div>
@@ -108,8 +121,10 @@
 
 <script>
 /* ================== 설정 ================== */
-/* 꼭 여기에 본인 API 키 넣으세요 */
-const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
+/* 초기 기본값: API 키는 여기에 직접 입력하시거나 상단 입력창에서 적용 버튼을 누르세요.
+   (주의) 브라우저 콘솔에 노출되니 공개 장소에서 키를 보관하지 마세요. */
+let API_KEY = ""; // <-- 기본 비어있음. 상단 입력창에서 "API 키 적용"을 누르시면 여기에 반영됩니다.
+
 const TOTAL_QUOTA = 10000;
 let usedQuota = 0;
 let currentPage = 1;
@@ -242,19 +257,13 @@ function renderPage(page){
     return true;
   });
 
-  // 정렬: score(가중치) / views / growth / latest
+  // 정렬: score(기본=eff) / views / growth / latest
   const sortBy = document.getElementById('sortBy').value;
-  const shortW = Number(document.getElementById('shortWeight').value) || 1;
-  const longW = Number(document.getElementById('longWeight').value) || 1;
 
-  // compute score for each
+  // compute score = efficiency by default
   list = list.map(r=>{
     const baseEff = r.efficiency || 0; // views / subs
-    let weight = 1;
-    if(r.isShort) weight = shortW;
-    if(r.isLong) weight = longW;
-    const score = baseEff * weight;
-    return Object.assign({}, r, {score});
+    return Object.assign({}, r, {score: baseEff});
   });
 
   if(sortBy==='views') list.sort((a,b)=> (b.views||0)-(a.views||0));
@@ -265,7 +274,7 @@ function renderPage(page){
     });
   } else if(sortBy==='latest'){
     list.sort((a,b)=> new Date(b.publishedAt) - new Date(a.publishedAt));
-  } else { // score
+  } else { // score (eff)
     list.sort((a,b)=> (b.score||0)-(a.score||0));
   }
 
@@ -300,20 +309,40 @@ function renderPagination(totalItems){
   }
 }
 
-/* ================== 이벤트(스냅샷 버튼) ================== */
+/* ================== 버튼 이벤트 ================== */
 document.getElementById('saveSnapshotBtn').addEventListener('click', ()=>{
   const snap = createSnapshotFromRows(allRows);
   saveSnapshot(snap);
   alert('스냅샷 저장 완료');
 });
+document.getElementById('loadSnapshotBtn').addEventListener('click', ()=>{
+  const snap = loadSnapshot();
+  if(!snap) return alert('저장된 스냅샷이 없습니다.');
+  // 간단히 알림과 콘솔 출력으로 보여줌
+  alert('저장된 스냅샷을 불러왔습니다. (콘솔에서 확인 가능)');
+  console.log('Loaded snapshot:', snap);
+});
 document.getElementById('clearSnapshotBtn').addEventListener('click', ()=>{
   if(confirm('스냅샷을 삭제하시겠습니까?')){ clearSnapshot(); }
+});
+
+/* API 키 적용 버튼 */
+document.getElementById('applyApiKeyBtn').addEventListener('click', ()=>{
+  const k = (document.getElementById('apiKeyInput').value||'').trim();
+  if(!k){ alert('API 키를 입력하세요.'); return; }
+  API_KEY = k;
+  alert('API 키가 적용되었습니다. 이제 검색을 실행하세요.');
 });
 
 /* ================== 검색 로직 ================== */
 document.getElementById('searchBtn').addEventListener('click', onSearch);
 
 async function onSearch(){
+  if(!API_KEY){
+    alert('먼저 상단에 API 키를 적용해주세요.');
+    return;
+  }
+
   document.getElementById('status').textContent = "검색 중...";
   const q = (document.getElementById('q').value||'').trim();
   if(!q){ alert('검색어를 입력하세요.'); return; }
@@ -376,7 +405,7 @@ async function onSearch(){
     const durationSec = isoToSeconds(v.contentDetails?.duration);
     const isShort = durationSec>0 && durationSec < 4*60;
     const isLong = durationSec >= 10*60;
-    // skip mid-form videos entirely (user wanted mid removed)
+    // skip mid-form videos entirely
     if(!isShort && !isLong) continue;
 
     const channelId = v.snippet.channelId;
@@ -403,8 +432,6 @@ async function onSearch(){
     });
   }
 
-  // 채널 items if needed (we can also show channels separately)
-  // For now focus on videos
   allRows = rows;
   currentPage = 1;
 
