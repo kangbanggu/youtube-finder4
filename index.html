@@ -1,431 +1,209 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>SmartTube Finder — 통합버전</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>YouTube Channel Search</title>
+
 <style>
-  :root{--accent:#e60023;--muted:#6b7280}
-  body{font-family:Noto Sans KR, Arial, sans-serif;background:#f7fafc;margin:0;padding:18px;color:#111}
-  .wrap{max-width:980px;margin:0 auto}
-  h1{color:var(--accent);text-align:center;margin:6px 0 18px}
-  .box{background:#fff;padding:12px;border-radius:12px;box-shadow:0 4px 18px rgba(10,10,10,0.06);margin-bottom:14px}
-  .row{display:flex;gap:8px;flex-wrap:wrap}
-  input,select,button{padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;font-size:14px;width:100%;box-sizing:border-box}
-  button{background:var(--accent);color:#fff;border:none;cursor:pointer;width:auto}
-  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
-  label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
-  #results{display:grid;gap:12px;margin-top:12px}
-  .card{background:#fff;border-radius:10px;padding:10px;display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:start;box-shadow:0 2px 8px rgba(0,0,0,0.04);transition:all 0.2s}
-  .card:hover{transform:scale(1.02);box-shadow:0 4px 12px rgba(0,0,0,0.08)}
-  .thumb{width:100%;height:92px;object-fit:cover;border-radius:8px}
-  .title{font-weight:700;margin:0 0 6px}
-  .meta{font-size:13px;color:#374151}
-  .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;background:#f3f4f6;margin-right:6px}
-  .ratio-good{color:#16a34a;font-weight:700}
-  .ratio-bad{color:#6b7280;font-weight:700}
-  .small{font-size:12px;color:#6b7280}
-  .note{font-size:13px;color:#6b7280;margin-top:6px}
-  @media(max-width:640px){.card{grid-template-columns:120px 1fr}.thumb{height:80px}}
-  .section-title{margin:12px 0 6px;font-weight:700}
-  #usageCounter { text-align:right; font-size:13px; color:#555; margin-bottom:8px; }
-  .pagination { text-align:center; margin-top:20px; }
-  .pagination button { margin:0 4px; padding:6px 10px; border-radius:6px; }
-  /* 효율 막대그래프 */
-  .bar-wrap { width: 100%; background: #e5e7eb; height: 8px; border-radius: 6px; margin-top:6px; overflow:hidden; }
-  .bar { height: 8px; background: var(--accent); width: 0%; transition: width 0.4s; }
-  .buff-badge { display:inline-block; background:#dcfce7; color:#046c4e; padding:4px 8px; border-radius:6px; font-weight:700; margin-left:8px; }
-  .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
-  .small-btn { padding:6px 8px; font-size:13px; border-radius:8px; background:#efefef; color:#111; border:1px solid #ddd; cursor:pointer; }
+    body {
+        font-family: Arial, sans-serif;
+        background: #f2f2f2;
+        padding: 20px;
+    }
+    #container {
+        max-width: 900px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h1 { color: #d9534f; }
+
+    .input-group {
+        margin-bottom: 15px;
+    }
+
+    input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 16px;
+    }
+
+    button {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 15px;
+        margin-right: 5px;
+    }
+
+    #searchBtn { background: #f0ad4e; color: white; }
+    #snapshotSave { background: #0275d8; color: white; }
+    #snapshotLoad { background: #5cb85c; color: white; }
+    #clearBtn { background: #d9534f; color: white; }
+
+    .video-item {
+        background: #fafafa;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+        border: 1px solid #eee;
+    }
 </style>
 </head>
+
 <body>
-<div class="wrap">
-  <h1>📈 SmartTube Finder — 통합(기존스타일 유지)</h1>
+<div id="container">
+    <h1>YouTube Channel Search</h1>
 
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-    <div class="controls">
-      <button id="saveSnapshotBtn" class="small-btn">스냅샷 저장</button>
-      <button id="clearSnapshotBtn" class="small-btn">스냅샷 초기화</button>
-      <label class="small muted" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="autoSave" checked/> 자동 저장</label>
-      <label class="small muted" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="useSnapshotCompare" checked/> 이전 스냅샷 비교</label>
-    </div>
-    <div id="usageCounter">쿼터 잔여: 10000 / 10000</div>
-  </div>
-
-  <div class="box">
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <input id="q" placeholder="검색어 입력 (예: 복지 사연, 건강, 다이어트)" style="flex:1" />
-      <button id="searchBtn">검색</button>
+    <div class="input-group">
+        <label><b>🔑 YouTube API Key</b></label>
+        <input type="text" id="apiKeyInput" placeholder="AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8">
+        <!-- 🟥 API KEY 저장 위치 표시 -->
+        <!-- localStorage에 자동 저장됨 -->
     </div>
 
-    <div style="margin-top:10px" class="filters">
-      <div><label>구분 (타입)</label>
-        <select id="typeFilter"><option value="any">전체</option><option value="video">일반영상</option><option value="shorts">쇼츠</option><option value="live">라이브</option><option value="channel">채널</option></select>
-      </div>
-
-      <div><label>업로드 기간</label>
-        <select id="timeFilter"><option value="any">전체</option><option value="today">오늘</option><option value="week">최근 1주</option><option value="month">이번 달</option><option value="3months">3개월</option><option value="6months">6개월</option><option value="year">올해</option></select>
-      </div>
-
-      <div><label>장르 필터 (콤마 구분 키워드)</label>
-        <input id="genreFilter" placeholder="예: 복지,건강,다이어트" />
-      </div>
-
-      <div><label>조회수 (최소 ~ 최대)</label>
-        <div style="display:flex;gap:6px"><input id="minViews" type="number" placeholder="최소"/><input id="maxViews" type="number" placeholder="최대"/></div>
-      </div>
-
-      <div><label>구독자 (최소 ~ 최대)</label>
-        <div style="display:flex;gap:6px"><input id="minSubs" type="number" placeholder="최소"/><input id="maxSubs" type="number" placeholder="최대"/></div>
-      </div>
-
-      <div><label>정렬</label>
-        <select id="sortBy"><option value="score">효율순(가중치)</option><option value="views">조회수 순</option><option value="growth">조회수 증가량</option><option value="latest">최신순</option></select>
-      </div>
-
-      <div><label>결과 갯수</label>
-        <select id="maxResults"><option value="10">10</option><option value="20" selected>20</option><option value="30">30</option></select>
-      </div>
-
-      <div><label>가중치 (영상길이)</label>
-        <div style="display:flex;gap:6px"><input id="shortWeight" type="number" value="1" step="0.1" title="쇼츠 가중치"/>쇼츠 가중치 &nbsp; <input id="longWeight" type="number" value="1" step="0.1" title="롱폼 가중치"/>롱폼 가중치</div>
-      </div>
+    <div class="input-group">
+        <label><b>🔍 검색어 입력</b></label>
+        <input type="text" id="queryInput" placeholder="예: 기초연금, 노인복지 등">
     </div>
 
-    <div class="note">설명: 쇼츠 = &lt; 4분, 롱폼 = ≥ 10분. (미드폼 결과는 출력하지 않습니다.)</div>
-  </div>
+    <button id="searchBtn">검색하기</button>
+    <button id="snapshotSave">스냅샷 저장</button>
+    <button id="snapshotLoad">스냅샷 불러오기</button>
+    <button id="clearBtn">초기화</button>
 
-  <div id="results">
-    <div class="box"><div class="section-title">🎬 쇼츠 (4분 미만)</div><div id="shorts"></div></div>
-    <div class="box"><div class="section-title">📺 롱폼 (10분 이상)</div><div id="longs"></div></div>
-    <div class="box"><div class="section-title">📁 채널 결과</div><div id="channels"></div></div>
-  </div>
+    <hr />
 
-  <div class="pagination" id="pagination"></div>
-  <div id="status" class="small" style="margin-top:10px"></div>
+    <h2>📌 검색 결과</h2>
+    <div id="results"></div>
 </div>
 
 <script>
-/* ================== 설정 ================== */
-/* 꼭 여기에 본인 API 키 넣으세요 */
-const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
-const TOTAL_QUOTA = 10000;
-let usedQuota = 0;
-let currentPage = 1;
-const itemsPerPage = 10;
-let allRows = [];
-const SNAPSHOT_KEY = "stf_snapshot_v1";
-let currentIndicators = {};
+// ----------------------------
+// 🔐 API KEY 저장 & 불러오기
+// ----------------------------
+const apiKeyInput = document.getElementById("apiKeyInput");
+apiKeyInput.value = localStorage.getItem("YT_API_KEY") || "";
 
-/* ================== 유틸 ================== */
-function updateUsageDisplay(){
-  const remain = Math.max(TOTAL_QUOTA - usedQuota, 0);
-  document.getElementById('usageCounter').textContent = `쿼터 잔여: ${remain} / ${TOTAL_QUOTA}`;
-}
-
-function isoToSeconds(iso){
-  if(!iso) return 0;
-  const h = Number((iso.match(/(\d+)H/) || [0,0])[1]||0);
-  const m = Number((iso.match(/(\d+)M/) || [0,0])[1]||0);
-  const s = Number((iso.match(/(\d+)S/) || [0,0])[1]||0);
-  return h*3600 + m*60 + s;
-}
-
-/* ================== 스냅샷 관리 ================== */
-function loadSnapshot(){
-  try{ const raw = localStorage.getItem(SNAPSHOT_KEY); return raw ? JSON.parse(raw) : null; }catch(e){return null;}
-}
-function saveSnapshot(data){ localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(data)); }
-function clearSnapshot(){ localStorage.removeItem(SNAPSHOT_KEY); alert("스냅샷 초기화 완료"); }
-function createSnapshotFromRows(rows){
-  const ts = Date.now();
-  const items = {};
-  for(const r of rows){ if(r.kind==='video') items[r.id] = {views: Number(r.views||0), ts}; }
-  return { ts, items };
-}
-
-/* ================== 인디케이터 계산 ================== */
-function computeIndicators(currentRows, prevSnapshot){
-  const now = Date.now();
-  const prevItems = prevSnapshot && prevSnapshot.items ? prevSnapshot.items : {};
-  const indicators = {};
-  for(const r of currentRows){
-    if(r.kind!=='video') continue;
-    const vid = r.id;
-    const curViews = Number(r.views||0);
-    const prev = prevItems[vid];
-    let delta=null, pct=null, perDay=null, flagged=false;
-    if(prev){
-      delta = curViews - Number(prev.views||0);
-      const elapsedMs = Math.max(now - (prev.ts||now),1);
-      const elapsedDays = elapsedMs / (1000*60*60*24);
-      perDay = delta / (elapsedDays || 1);
-      pct = prev.views ? (delta / prev.views * 100) : null;
-    }
-    const eff = r.subs ? (r.views / r.subs) : null;
-    // flag 기준: pct>50% or eff>=5 or perDay>5000
-    if(pct!==null && pct>50) flagged=true;
-    if(eff!==null && eff>=5) flagged=true;
-    if(perDay!==null && perDay>5000) flagged=true;
-    indicators[vid] = { delta, pct, perDay, eff, flagged };
-  }
-  return indicators;
-}
-
-/* ================== 렌더링 ================== */
-function renderCard(r, maxEff, indicators){
-  const videoUrl = r.kind==='channel' ? `https://www.youtube.com/channel/${r.id}` : `https://www.youtube.com/watch?v=${r.id}`;
-  const badge = r.kind==='channel' ? '채널' : (r.isShort ? '쇼츠' : '롱폼');
-  const subsText = r.subs !== undefined ? r.subs.toLocaleString() : '-';
-  const viewsText = r.views !== undefined ? r.views.toLocaleString() : '-';
-  const effNum = r.efficiency===null?null:Number(r.efficiency);
-  const effText = effNum===null?'N/A':effNum.toFixed(2)+'x';
-  const published = r.publishedAt ? new Date(r.publishedAt).toLocaleDateString() : '-';
-  const barWidth = (effNum && maxEff) ? Math.min(100, (effNum / maxEff*100)) : 0;
-  const ind = indicators && indicators[r.id] ? indicators[r.id] : null;
-  const deltaText = ind && ind.delta!=null ? (ind.delta>=0? `+${ind.delta.toLocaleString()}` : `${ind.delta.toLocaleString()}`) : '-';
-  const pctText = ind && ind.pct!=null ? `${ind.pct.toFixed(1)}%` : '-';
-  const perDayText = ind && ind.perDay!=null ? `${Math.round(ind.perDay).toLocaleString()}/day` : '-';
-  const flagHtml = ind && ind.flagged ? `<span class="buff-badge">버프 의심</span>` : '';
-
-  return `
-  <a href="${videoUrl}" target="_blank" style="text-decoration:none;color:inherit;">
-    <div class="card">
-      <div><img class="thumb" src="${r.thumbnail}" alt="thumb"></div>
-      <div>
-        <div class="small"><span class="badge">${badge}</span>${flagHtml}</div>
-        <div class="title">${r.title}</div>
-        <div class="meta small">${r.kind==='video'?`채널: ${r.channelTitle||''}`:''}</div>
-        <div class="meta">조회수: <strong>${viewsText}</strong> · 구독자: <strong>${subsText}</strong></div>
-        <div class="meta">효율: <strong class="${effNum && effNum>=5 ? 'ratio-good' : effNum && effNum<1 ? 'ratio-bad' : ''}">${effText}</strong>
-          <div class="bar-wrap"><div class="bar" style="width:${barWidth}%"></div></div>
-        </div>
-        <div class="meta">증가량: <strong>${deltaText}</strong> (${pctText}) · ${perDayText}</div>
-        <div class="meta">업로드: ${published}</div>
-      </div>
-    </div>
-  </a>`;
-}
-
-function renderPage(page){
-  const shortsEl = document.getElementById('shorts');
-  const longsEl = document.getElementById('longs');
-  const channelsEl = document.getElementById('channels');
-  shortsEl.innerHTML = longsEl.innerHTML = channelsEl.innerHTML = "";
-
-  // 필터 & 정렬 적용된 목록 만들기
-  let list = allRows.slice();
-
-  // 장르 필터
-  const genreRaw = (document.getElementById('genreFilter').value||'').trim();
-  const genres = genreRaw ? genreRaw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean) : [];
-
-  if(genres.length){
-    list = list.filter(r=>{
-      if(r.kind!=='video') return false;
-      const txt = (r.title + ' ' + (r.snippetDescription||'') ).toLowerCase();
-      return genres.some(g=> txt.includes(g));
-    });
-  }
-
-  // views/subs filters
-  const minV = Number(document.getElementById('minViews').value) || 0;
-  const maxV = Number(document.getElementById('maxViews').value) || Infinity;
-  const minS = Number(document.getElementById('minSubs').value) || 0;
-  const maxS = Number(document.getElementById('maxSubs').value) || Infinity;
-  list = list.filter(r=>{
-    if(r.kind!=='video') return true;
-    if(r.views < minV || r.views > maxV) return false;
-    const s = r.subs || 0;
-    if(s < minS || s > maxS) return false;
-    return true;
-  });
-
-  // 정렬: score(가중치) / views / growth / latest
-  const sortBy = document.getElementById('sortBy').value;
-  const shortW = Number(document.getElementById('shortWeight').value) || 1;
-  const longW = Number(document.getElementById('longWeight').value) || 1;
-
-  // compute score for each
-  list = list.map(r=>{
-    const baseEff = r.efficiency || 0; // views / subs
-    let weight = 1;
-    if(r.isShort) weight = shortW;
-    if(r.isLong) weight = longW;
-    const score = baseEff * weight;
-    return Object.assign({}, r, {score});
-  });
-
-  if(sortBy==='views') list.sort((a,b)=> (b.views||0)-(a.views||0));
-  else if(sortBy==='growth'){
-    list.sort((a,b)=>{
-      const ai = currentIndicators[a.id] || {}; const bi = currentIndicators[b.id] || {};
-      return (bi.delta||0) - (ai.delta||0);
-    });
-  } else if(sortBy==='latest'){
-    list.sort((a,b)=> new Date(b.publishedAt) - new Date(a.publishedAt));
-  } else { // score
-    list.sort((a,b)=> (b.score||0)-(a.score||0));
-  }
-
-  // paginate
-  const start = (page-1)*itemsPerPage;
-  const end = start + itemsPerPage;
-  const pageItems = list.slice(start,end);
-
-  const maxEff = Math.max(...list.map(r=> r.efficiency || 0), 1);
-
-  for(const r of pageItems){
-    const html = renderCard(r, maxEff, currentIndicators);
-    if(r.kind==='channel') channelsEl.insertAdjacentHTML('beforeend', html);
-    else if(r.isShort) shortsEl.insertAdjacentHTML('beforeend', html);
-    else if(r.isLong) longsEl.insertAdjacentHTML('beforeend', html);
-  }
-
-  renderPagination(list.length);
-}
-
-function renderPagination(totalItems){
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-  const container = document.getElementById('pagination');
-  container.innerHTML = "";
-  if(totalPages <= 1) return;
-  for(let i=1;i<=totalPages;i++){
-    const btn = document.createElement('button');
-    btn.textContent = i;
-    if(i===currentPage) btn.style.background="#e60023";
-    btn.onclick = ()=>{ currentPage=i; renderPage(currentPage); };
-    container.appendChild(btn);
-  }
-}
-
-/* ================== 이벤트(스냅샷 버튼) ================== */
-document.getElementById('saveSnapshotBtn').addEventListener('click', ()=>{
-  const snap = createSnapshotFromRows(allRows);
-  saveSnapshot(snap);
-  alert('스냅샷 저장 완료');
-});
-document.getElementById('clearSnapshotBtn').addEventListener('click', ()=>{
-  if(confirm('스냅샷을 삭제하시겠습니까?')){ clearSnapshot(); }
+apiKeyInput.addEventListener("input", () => {
+    localStorage.setItem("YT_API_KEY", apiKeyInput.value);
 });
 
-/* ================== 검색 로직 ================== */
-document.getElementById('searchBtn').addEventListener('click', onSearch);
+// ----------------------------
+// 🔍 유튜브 API 요청 함수
+// ----------------------------
+async function searchVideos() {
+    const query = document.getElementById("queryInput").value;
+    const apiKey = apiKeyInput.value;
 
-async function onSearch(){
-  document.getElementById('status').textContent = "검색 중...";
-  const q = (document.getElementById('q').value||'').trim();
-  if(!q){ alert('검색어를 입력하세요.'); return; }
+    if (!apiKey) return alert("API 키가 없습니다.");
+    if (!query) return alert("검색어를 입력하세요.");
 
-  // search.list (쿼터 100)
-  usedQuota += 100;
-  updateUsageDisplay();
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&q=${encodeURIComponent(query)}&key=${apiKey}`;
 
-  const maxResults = Number(document.getElementById('maxResults').value) || 20;
-  const sUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=${maxResults}&key=${API_KEY}`;
-  const sRes = await fetch(sUrl);
-  const sData = await sRes.json();
-  if(sData.error){ document.getElementById('status').textContent = `오류: ${sData.error.message}`; return; }
+    const res = await fetch(url);
+    const data = await res.json();
 
-  // collect ids
-  const videoIds = [];
-  const channelIds = new Set();
-  for(const it of sData.items || []){
-    if(it.id.kind === 'youtube#video'){
-      videoIds.push(it.id.videoId);
-      if(it.snippet && it.snippet.channelId) channelIds.add(it.snippet.channelId);
-    } else if(it.id.kind === 'youtube#channel'){
-      channelIds.add(it.id.channelId);
+    if (!data.items) {
+        alert("검색 실패! API 키 또는 쿼리를 확인하세요.");
+        return;
     }
-  }
 
-  if(videoIds.length===0){
-    allRows = [];
-    renderPage(1);
-    document.getElementById('status').textContent = '결과 없음';
-    return;
-  }
+    // 영상 ID만 추출
+    let videoIds = data.items.map(v => v.id.videoId).join(",");
 
-  // videos.list (쿼터 1 per video)
-  usedQuota += videoIds.length;
-  updateUsageDisplay();
-
-  const vUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds.join(',')}&key=${API_KEY}`;
-  const vRes = await fetch(vUrl);
-  const vData = await vRes.json();
-  if(vData.error){ document.getElementById('status').textContent = `오류: ${vData.error.message}`; return; }
-
-  // channels.list for subs (쿼터 1 per channel)
-  const chList = Array.from(channelIds);
-  let channelsMap = {};
-  if(chList.length){
-    usedQuota += chList.length;
-    updateUsageDisplay();
-    const cUrl = `https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id=${chList.join(',')}&key=${API_KEY}`;
-    const cRes = await fetch(cUrl);
-    const cData = await cRes.json();
-    if(!cData.error){
-      for(const c of cData.items || []) channelsMap[c.id] = c;
-    }
-  }
-
-  // 가공: duration 기반 분류 + 효율 계산
-  const rows = [];
-  for(const v of vData.items || []){
-    const durationSec = isoToSeconds(v.contentDetails?.duration);
-    const isShort = durationSec>0 && durationSec < 4*60;
-    const isLong = durationSec >= 10*60;
-    // skip mid-form videos entirely (user wanted mid removed)
-    if(!isShort && !isLong) continue;
-
-    const channelId = v.snippet.channelId;
-    const ch = channelsMap[channelId] || null;
-    const subs = ch ? Number(ch.statistics.subscriberCount||0) : undefined;
-    const views = Number(v.statistics?.viewCount || 0);
-    const eff = subs ? (views / subs) : null;
-
-    rows.push({
-      kind:'video',
-      id: v.id,
-      title: v.snippet.title,
-      thumbnail: v.snippet.thumbnails?.medium?.url || '',
-      snippetDescription: v.snippet.description || '',
-      channelId,
-      channelTitle: v.snippet.channelTitle,
-      subs,
-      views,
-      efficiency: eff,
-      durationSec,
-      isShort,
-      isLong,
-      publishedAt: v.snippet.publishedAt
-    });
-  }
-
-  // 채널 items if needed (we can also show channels separately)
-  // For now focus on videos
-  allRows = rows;
-  currentPage = 1;
-
-  // 이전 스냅샷 불러와서 지표 계산
-  const useCompare = document.getElementById('useSnapshotCompare').checked;
-  const prevSnap = useCompare ? loadSnapshot() : null;
-  currentIndicators = computeIndicators(allRows, prevSnap);
-
-  // 자동 저장 옵션
-  if(document.getElementById('autoSave').checked){
-    const snap = createSnapshotFromRows(allRows);
-    saveSnapshot(snap);
-  }
-
-  renderPage(1);
-  document.getElementById('status').textContent = `${allRows.length}개의 결과`;
-  updateUsageDisplay();
+    // ➜ 상세 조회
+    fetchVideoDetails(videoIds);
 }
 
-/* 초기 표시 */
-updateUsageDisplay();
+// ----------------------------
+// 📌 상세 조회 + 조회수 비교
+// ----------------------------
+async function fetchVideoDetails(videoIds) {
+    const apiKey = apiKeyInput.value;
+
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds}&key=${apiKey}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    let videos = data.items.map(v => {
+        let publishDate = new Date(v.snippet.publishedAt);
+        let days = (Date.now() - publishDate) / (1000*60*60*24);
+        let dailyGrowth = Math.round(v.statistics.viewCount / days);
+
+        return {
+            id: v.id,
+            title: v.snippet.title,
+            views: Number(v.statistics.viewCount),
+            dailyGrowth: dailyGrowth,
+            published: v.snippet.publishedAt
+        };
+    });
+
+    // 조회수 높은순 정렬
+    videos.sort((a,b) => b.views - a.views);
+
+    renderResults(videos);
+}
+
+// ----------------------------
+// 🎨 결과 렌더링
+// ----------------------------
+function renderResults(videos) {
+    const box = document.getElementById("results");
+    box.innerHTML = "";
+
+    videos.forEach(v => {
+        box.innerHTML += `
+            <div class="video-item">
+                <b>${v.title}</b><br>
+                조회수: ${v.views.toLocaleString()}<br>
+                하루 증가량: ${v.dailyGrowth.toLocaleString()}<br>
+                업로드: ${v.published}<br>
+                <a href="https://www.youtube.com/watch?v=${v.id}" target="_blank">영상 보기</a>
+            </div>
+        `;
+    });
+}
+
+// ----------------------------
+// 💾 스냅샷 저장
+// ----------------------------
+document.getElementById("snapshotSave").addEventListener("click", () => {
+    localStorage.setItem("YT_SNAPSHOT", document.getElementById("results").innerHTML);
+    alert("스냅샷 저장 완료!");
+});
+
+// ----------------------------
+// 📂 스냅샷 불러오기
+// ----------------------------
+document.getElementById("snapshotLoad").addEventListener("click", () => {
+    const saved = localStorage.getItem("YT_SNAPSHOT");
+    if (!saved) return alert("저장된 스냅샷이 없습니다.");
+
+    document.getElementById("results").innerHTML = saved;
+});
+
+// ----------------------------
+// ❌ 초기화
+// ----------------------------
+document.getElementById("clearBtn").addEventListener("click", () => {
+    localStorage.removeItem("YT_SNAPSHOT");
+    document.getElementById("results").innerHTML = "";
+    alert("모든 데이터 초기화 완료!");
+});
+
+// 🔍 검색 버튼
+document.getElementById("searchBtn").addEventListener("click", searchVideos);
 </script>
+
 </body>
 </html>
