@@ -31,6 +31,7 @@
   #usageCounter { text-align:right; font-size:13px; color:#555; margin-bottom:8px; }
   .pagination { text-align:center; margin-top:20px; }
   .pagination button { margin:0 4px; padding:6px 10px; border-radius:6px; }
+  /* 효율 막대그래프 */
   .bar-wrap { width: 100%; background: #e5e7eb; height: 8px; border-radius: 6px; margin-top:6px; overflow:hidden; }
   .bar { height: 8px; background: var(--accent); width: 0%; transition: width 0.4s; }
   .buff-badge { display:inline-block; background:#dcfce7; color:#046c4e; padding:4px 8px; border-radius:6px; font-weight:700; margin-left:8px; }
@@ -74,8 +75,7 @@
       <div><label>조회수 (최소 ~ 최대)</label>
         <div style="display:flex;gap:6px"><input id="minViews" type="number" placeholder="최소"/><input id="maxViews" type="number" placeholder="최대"/></div>
       </div>
-
-      <div><label>구독자 (최소 ~ 최대)</label>
+<div><label>구독자 (최소 ~ 최대)</label>
         <div style="display:flex;gap:6px"><input id="minSubs" type="number" placeholder="최소"/><input id="maxSubs" type="number" placeholder="최대"/></div>
       </div>
 
@@ -112,7 +112,6 @@ const itemsPerPage = 10;
 let allRows = [];
 const SNAPSHOT_KEY = "stf_snapshot_v1";
 let currentIndicators = {};
-
 /* ================== 유틸 ================== */
 function updateUsageDisplay(){
   const remain = Math.max(TOTAL_QUOTA - usedQuota, 0);
@@ -202,7 +201,6 @@ function renderCard(r, maxEff, indicators){
     </div>
   </a>`;
 }
-
 function renderPage(page){
   const shortsEl = document.getElementById('shorts');
   const longsEl = document.getElementById('longs');
@@ -299,7 +297,6 @@ document.getElementById('saveSnapshotBtn').addEventListener('click', ()=>{
 document.getElementById('clearSnapshotBtn').addEventListener('click', ()=>{
   if(confirm('스냅샷을 삭제하시겠습니까?')){ clearSnapshot(); }
 });
-
 /* ================== 검색 로직 ================== */
 document.getElementById('searchBtn').addEventListener('click', onSearch);
 
