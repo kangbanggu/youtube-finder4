@@ -31,7 +31,6 @@
   #usageCounter { text-align:right; font-size:13px; color:#555; margin-bottom:8px; }
   .pagination { text-align:center; margin-top:20px; }
   .pagination button { margin:0 4px; padding:6px 10px; border-radius:6px; }
-  /* 효율 막대그래프 */
   .bar-wrap { width: 100%; background: #e5e7eb; height: 8px; border-radius: 6px; margin-top:6px; overflow:hidden; }
   .bar { height: 8px; background: var(--accent); width: 0%; transition: width 0.4s; }
   .buff-badge { display:inline-block; background:#dcfce7; color:#046c4e; padding:4px 8px; border-radius:6px; font-weight:700; margin-left:8px; }
@@ -81,15 +80,11 @@
       </div>
 
       <div><label>정렬</label>
-        <select id="sortBy"><option value="score">효율순(가중치)</option><option value="views">조회수 순</option><option value="growth">조회수 증가량</option><option value="latest">최신순</option></select>
+        <select id="sortBy"><option value="score">효율순</option><option value="views">조회수 순</option><option value="growth">조회수 증가량</option><option value="latest">최신순</option></select>
       </div>
 
       <div><label>결과 갯수</label>
         <select id="maxResults"><option value="10">10</option><option value="20" selected>20</option><option value="30">30</option></select>
-      </div>
-
-      <div><label>가중치 (영상길이)</label>
-        <div style="display:flex;gap:6px"><input id="shortWeight" type="number" value="1" step="0.1" title="쇼츠 가중치"/>쇼츠 가중치 &nbsp; <input id="longWeight" type="number" value="1" step="0.1" title="롱폼 가중치"/>롱폼 가중치</div>
       </div>
     </div>
 
@@ -108,7 +103,7 @@
 
 <script>
 /* ================== 설정 ================== */
-/* 꼭 여기에 본인 API 키 넣으세요 (고정값) */
+/* API 키를 하드코딩한 상태 (원하면 이 값만 바꿔서 쓰세요) */
 const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
 const TOTAL_QUOTA = 10000;
 let usedQuota = 0;
@@ -242,18 +237,13 @@ function renderPage(page){
     return true;
   });
 
-  // 정렬: score(가중치) / views / growth / latest
+  // 정렬: score / views / growth / latest
   const sortBy = document.getElementById('sortBy').value;
-  const shortW = Number(document.getElementById('shortWeight').value) || 1;
-  const longW = Number(document.getElementById('longWeight').value) || 1;
 
-  // compute score for each
+  // compute score (기본: 효율 = views / subs) — **가중치 제거됨**
   list = list.map(r=>{
     const baseEff = r.efficiency || 0; // views / subs
-    let weight = 1;
-    if(r.isShort) weight = shortW;
-    if(r.isLong) weight = longW;
-    const score = baseEff * weight;
+    const score = baseEff;
     return Object.assign({}, r, {score});
   });
 
@@ -403,8 +393,6 @@ async function onSearch(){
     });
   }
 
-  // 채널 items if needed (we can also show channels separately)
-  // For now focus on videos
   allRows = rows;
   currentPage = 1;
 
