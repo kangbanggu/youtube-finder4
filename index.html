@@ -62,62 +62,76 @@ label{font-size:13px;color:#555}
 <script>
 const API_KEY="AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
 
+const qEl = document.getElementById("q");
+const typeEl = document.getElementById("type");
+const periodEl = document.getElementById("period");
+const resultEl = document.getElementById("result");
+
 function isoToSec(t){
-let h=/(\d+)H/.exec(t)?.[1]||0
-let m=/(\d+)M/.exec(t)?.[1]||0
-let s=/(\d+)S/.exec(t)?.[1]||0
-return h*3600+m*60+s*1
+  let h=/(\d+)H/.exec(t)?.[1]||0;
+  let m=/(\d+)M/.exec(t)?.[1]||0;
+  let s=/(\d+)S/.exec(t)?.[1]||0;
+  return h*3600+m*60+Number(s);
 }
 
 async function search(){
-result.innerHTML=""
-const q=qEl.value.trim()
-if(!q)return alert("검색어 입력")
+  resultEl.innerHTML="";
+  const q = qEl.value.trim();
+  if(!q) return alert("검색어 입력");
 
-const type=typeEl.value
-const period=periodEl.value
-const after=new Date(Date.now()-period*86400000).toISOString()
+  const type = typeEl.value;
+  const period = Number(periodEl.value);
+  const after = new Date(Date.now()-period*86400000).toISOString();
 
-const s=await fetch(
-`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${q}&publishedAfter=${after}&key=${API_KEY}`
-).then(r=>r.json())
+  const s = await fetch(
+    `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${encodeURIComponent(q)}&publishedAfter=${after}&key=${API_KEY}`
+  ).then(r=>r.json());
 
-const ids=s.items.map(i=>i.id.videoId).join(",")
-const v=await fetch(
-`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${API_KEY}`
-).then(r=>r.json())
+  if(!s.items) return;
 
-v.items.forEach(it=>{
-const dur=isoToSec(it.contentDetails.duration)
-const isShort=dur<240
-const isLong=dur>=240
+  const ids = s.items.map(i=>i.id.videoId).join(",");
+  const v = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${API_KEY}`
+  ).then(r=>r.json());
 
-if(type==="short" && !isShort)return
-if(type==="long" && !isLong)return
+  v.items.forEach(it=>{
+    const dur = isoToSec(it.contentDetails.duration);
 
-const views=+it.statistics.viewCount
-const key="snap_"+it.id
-const prev=localStorage.getItem(key)
-let buff=false
-if(prev && views-prev>views*0.3) buff=true
-localStorage.setItem(key,views)
+    // ✅ 정확한 기준
+    const isShort = dur < 240;        // 4분 미만
+    const isLong  = dur >= 600;       // 10분 이상
+    if(!isShort && !isLong) return;
 
-result.innerHTML+=`
-<div class="card">
-<img class="thumb" src="${it.snippet.thumbnails.medium.url}">
-<div>
-<span class="badge">${isShort?"쇼츠":"롱폼"}</span>
-${buff?'<span class="badge buff">밀리는중</span>':""}
-<b>${it.snippet.title}</b>
-<div class="small">조회수 ${views.toLocaleString()}</div>
-</div>
-</div>`
-})
+    if(type==="short" && !isShort) return;
+    if(type==="long" && !isLong) return;
+
+    const views = Number(it.statistics.viewCount);
+    const snapKey = "snap_"+it.id;
+    const prevData = JSON.parse(localStorage.getItem(snapKey) || "null");
+
+    let buff=false;
+    if(prevData){
+      const delta = views - prevData.views;
+      if(delta > prevData.views*0.3) buff=true; // 30% 이상 상승
+    }
+
+    localStorage.setItem(snapKey, JSON.stringify({
+      views,
+      ts: Date.now()
+    }));
+
+    resultEl.innerHTML += `
+    <div class="card">
+      <img class="thumb" src="${it.snippet.thumbnails.medium.url}">
+      <div>
+        <span class="badge">${isShort?"쇼츠":"롱폼"}</span>
+        ${buff?'<span class="badge buff">밀리는중</span>':""}
+        <b>${it.snippet.title}</b>
+        <div class="small">조회수 ${views.toLocaleString()}</div>
+      </div>
+    </div>`;
+  });
 }
-
-const qEl=q
-const typeEl=type
-const periodEl=period
 </script>
 </body>
 </html>
