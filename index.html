@@ -2,9 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>SmartTube Finder (완성판)</title>
+<title>SmartTube Finder A단계</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
 body{font-family:Noto Sans KR,Arial;background:#f5f7fb;margin:0;padding:16px}
 .wrap{max-width:1100px;margin:auto}
@@ -20,19 +19,16 @@ label{font-size:13px;color:#555}
 .small{font-size:13px;color:#555}
 .badge{display:inline-block;background:#eee;padding:4px 8px;border-radius:20px;font-size:12px;margin-right:6px}
 .buff{background:#dcfce7;color:#046c4e;font-weight:700}
-#quota{text-align:right;font-size:13px;color:#444}
 </style>
 </head>
 
 <body>
 <div class="wrap">
-<h1>📊 SmartTube Finder</h1>
-
-<div id="quota">쿼터 잔여(추정): 10000</div>
+<h1>📊 SmartTube Finder (A단계)</h1>
 
 <div class="box">
 <div class="row">
-<input id="q" placeholder="검색어 (예: 복지 사연, 노인 건강)" style="flex:1">
+<input id="q" placeholder="검색어" style="flex:1">
 <button onclick="search()">검색</button>
 </div>
 
@@ -43,63 +39,28 @@ label{font-size:13px;color:#555}
 <option value="all">전체</option>
 <option value="short">쇼츠</option>
 <option value="long">롱폼</option>
-<option value="channel">채널</option>
 </select>
 </div>
 
 <div>
 <label>업로드 기간</label>
 <select id="period">
-<option value="any">전체</option>
-<option value="1">오늘</option>
+<option value="30" selected>1개월</option>
 <option value="7">1주</option>
-<option value="30">1개월</option>
 <option value="90">3개월</option>
-<option value="180">6개월</option>
 </select>
-</div>
-
-<div>
-<label>정렬</label>
-<select id="sort">
-<option value="views">조회수</option>
-<option value="growth">조회수 증가</option>
-<option value="latest">최신순</option>
-</select>
-</div>
-</div>
-
-<div class="row" style="margin-top:10px">
-<div>
-<label>조회수</label>
-<input id="minViews" type="number" placeholder="최소">
-<input id="maxViews" type="number" placeholder="최대">
-</div>
-<div>
-<label>구독자</label>
-<input id="minSubs" type="number" placeholder="최소">
-<input id="maxSubs" type="number" placeholder="최대">
 </div>
 </div>
 </div>
 
 <div class="box">
-<div class="section">🎬 쇼츠</div>
-<div id="shorts"></div>
-
-<div class="section">📺 롱폼</div>
-<div id="longs"></div>
-
-<div class="section">📁 채널</div>
-<div id="channels"></div>
+<div class="section">📊 결과</div>
+<div id="result"></div>
 </div>
 </div>
 
 <script>
-const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
-let quota = 10000;
-
-function useQuota(n){quota-=n;document.getElementById("quota").textContent="쿼터 잔여(추정): "+quota}
+const API_KEY="AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
 
 function isoToSec(t){
 let h=/(\d+)H/.exec(t)?.[1]||0
@@ -109,53 +70,54 @@ return h*3600+m*60+s*1
 }
 
 async function search(){
-document.getElementById("shorts").innerHTML=""
-document.getElementById("longs").innerHTML=""
-document.getElementById("channels").innerHTML=""
-
-const q=document.getElementById("q").value.trim()
+result.innerHTML=""
+const q=qEl.value.trim()
 if(!q)return alert("검색어 입력")
 
-const period=document.getElementById("period").value
-let after=""
-if(period!=="any"){
-after=new Date(Date.now()-period*86400000).toISOString()
-}
+const type=typeEl.value
+const period=periodEl.value
+const after=new Date(Date.now()-period*86400000).toISOString()
 
-useQuota(100)
+const s=await fetch(
+`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${q}&publishedAfter=${after}&key=${API_KEY}`
+).then(r=>r.json())
 
-let url=`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${q}&key=${API_KEY}`
-if(after)url+=`&publishedAfter=${after}`
+const ids=s.items.map(i=>i.id.videoId).join(",")
+const v=await fetch(
+`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${API_KEY}`
+).then(r=>r.json())
 
-const r=await fetch(url).then(r=>r.json())
-if(r.error)return alert(r.error.message)
-
-const ids=r.items.map(i=>i.id.videoId).join(",")
-useQuota(ids.length)
-
-const v=await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${ids}&key=${API_KEY}`).then(r=>r.json())
-
-for(const it of v.items){
+v.items.forEach(it=>{
 const dur=isoToSec(it.contentDetails.duration)
 const isShort=dur<240
-const isLong=dur>=600
-if(!isShort&&!isLong)continue
+const isLong=dur>=240
+
+if(type==="short" && !isShort)return
+if(type==="long" && !isLong)return
 
 const views=+it.statistics.viewCount
-const html=`
+const key="snap_"+it.id
+const prev=localStorage.getItem(key)
+let buff=false
+if(prev && views-prev>views*0.3) buff=true
+localStorage.setItem(key,views)
+
+result.innerHTML+=`
 <div class="card">
 <img class="thumb" src="${it.snippet.thumbnails.medium.url}">
 <div>
-<div class="badge">${isShort?"쇼츠":"롱폼"}</div>
+<span class="badge">${isShort?"쇼츠":"롱폼"}</span>
+${buff?'<span class="badge buff">밀리는중</span>':""}
 <b>${it.snippet.title}</b>
 <div class="small">조회수 ${views.toLocaleString()}</div>
 </div>
 </div>`
+})
+}
 
-if(isShort)shorts.innerHTML+=html
-if(isLong)longs.innerHTML+=html
-}
-}
+const qEl=q
+const typeEl=type
+const periodEl=period
 </script>
 </body>
 </html>
