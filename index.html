@@ -116,19 +116,24 @@ if(diff>0 && (diff/prev.views>0.3 || ratio>=3)) buff=true;
 nextSnapshot[v.id]={views,ts:now};
 
 result.innerHTML+=`
-<div class="card">
+<a class="card" 
+   href="https://www.youtube.com/watch?v=${v.id}" 
+   target="_blank" 
+   style="text-decoration:none;color:inherit">
+
 <img class="thumb" src="${v.snippet.thumbnails.medium.url}">
 <div>
-<div>
-<span class="badge">영상</span>
-${buff?'<span class="badge buff">📈 밀리는 중</span>':""}
+  <div>
+    <span class="badge">영상</span>
+    ${buff?'<span class="badge buff">📈 밀리는 중</span>':""}
+  </div>
+  <b>${v.snippet.title}</b>
+  <div class="small">조회수 ${views.toLocaleString()}</div>
+  <div class="small">구독자 대비 조회수 ${ratio.toFixed(1)}x</div>
+  <div class="small">48시간 증가량 ${delta}</div>
 </div>
-<b>${v.snippet.title}</b>
-<div class="small">조회수 ${views.toLocaleString()}</div>
-<div class="small">구독자 대비 조회수 ${ratio.toFixed(1)}x</div>
-<div class="small">48시간 증가량 ${delta}</div>
-</div>
-</div>`;
+
+</a>`;;
 });
 
 saveSnapshot(nextSnapshot);
