@@ -2,9 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>SmartTube Finder A+ (48시간 추적)</title>
+<title>SmartTube Finder (완성판)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
 body{font-family:Noto Sans KR,Arial;background:#f5f7fb;margin:0;padding:16px}
 .wrap{max-width:1100px;margin:auto}
@@ -13,19 +12,20 @@ h1{text-align:center;color:#e60023}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 input,select,button{padding:8px;border-radius:8px;border:1px solid #ccc;font-size:14px}
 button{background:#e60023;color:#fff;border:none;cursor:pointer}
-.section{margin-top:10px;font-weight:700}
+label{font-size:13px;color:#555}
+.section{margin-top:16px;font-weight:700}
 .card{display:grid;grid-template-columns:160px 1fr;gap:10px;padding:10px;border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:10px}
 .thumb{width:100%;border-radius:8px}
 .small{font-size:13px;color:#555}
 .badge{display:inline-block;background:#eee;padding:4px 8px;border-radius:20px;font-size:12px;margin-right:6px}
 .buff{background:#dcfce7;color:#046c4e;font-weight:700}
-.alert{background:#fee2e2;color:#991b1b;font-weight:700}
+a{text-decoration:none;color:inherit}
 </style>
 </head>
 
 <body>
 <div class="wrap">
-<h1>📊 SmartTube Finder A+</h1>
+<h1>📊 SmartTube Finder</h1>
 
 <div class="box">
 <div class="row">
@@ -35,108 +35,102 @@ button{background:#e60023;color:#fff;border:none;cursor:pointer}
 
 <div class="row" style="margin-top:10px">
 <div>
+<label>영상 구분</label>
+<select id="type">
+<option value="all">전체</option>
+<option value="short">쇼츠 (4분 미만)</option>
+<option value="mid">미드폼 (4~10분)</option>
+<option value="long">롱폼 (10분 이상)</option>
+</select>
+</div>
+
+<div>
 <label>업로드 기간</label>
 <select id="period">
-<option value="30" selected>최근 1개월</option>
-<option value="7">최근 1주</option>
-<option value="90">최근 3개월</option>
+<option value="1">24시간</option>
+<option value="7">7일</option>
+<option value="30" selected>30일</option>
 </select>
 </div>
 </div>
 </div>
 
 <div class="box">
-<div class="section">🔥 유튜브가 밀기 시작한 영상</div>
+<div class="section">🔍 검색 결과</div>
 <div id="result"></div>
 </div>
 </div>
 
 <script>
 const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
-const SNAP_KEY = "smarttube_snapshot_v48";
 
 function isoToSec(t){
-let h=/(\d+)H/.exec(t)?.[1]||0;
-let m=/(\d+)M/.exec(t)?.[1]||0;
-let s=/(\d+)S/.exec(t)?.[1]||0;
-return h*3600+m*60+s*1;
-}
-
-function loadSnapshot(){
-try{
-return JSON.parse(localStorage.getItem(SNAP_KEY)) || {};
-}catch{ return {}; }
-}
-
-function saveSnapshot(data){
-localStorage.setItem(SNAP_KEY, JSON.stringify(data));
+  let h=/(\d+)H/.exec(t)?.[1]||0;
+  let m=/(\d+)M/.exec(t)?.[1]||0;
+  let s=/(\d+)S/.exec(t)?.[1]||0;
+  return h*3600 + m*60 + s*1;
 }
 
 async function search(){
-result.innerHTML="";
-const q=document.getElementById("q").value.trim();
-if(!q) return alert("검색어 입력");
+  result.innerHTML="";
+  const q=document.getElementById("q").value.trim();
+  if(!q) return alert("검색어를 입력하세요");
 
-const period=document.getElementById("period").value;
-const after=new Date(Date.now()-period*86400000).toISOString();
+  const type=document.getElementById("type").value;
+  const period=document.getElementById("period").value;
+  const after=new Date(Date.now()-period*86400000).toISOString();
 
-const searchRes=await fetch(
-`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${q}&publishedAfter=${after}&key=${API_KEY}`
-).then(r=>r.json());
+  const searchRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${encodeURIComponent(q)}&publishedAfter=${after}&key=${API_KEY}`
+  ).then(r=>r.json());
 
-if(!searchRes.items) return alert("검색 실패");
+  const ids = searchRes.items.map(i=>i.id.videoId).join(",");
+  if(!ids) return;
 
-const ids=searchRes.items.map(i=>i.id.videoId).join(",");
-const videoRes=await fetch(
-`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids}&key=${API_KEY}`
-).then(r=>r.json());
+  const videoRes = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${API_KEY}`
+  ).then(r=>r.json());
 
-const snapshot=loadSnapshot();
-const now=Date.now();
-const nextSnapshot={...snapshot};
+  videoRes.items.forEach(v=>{
+    const dur = isoToSec(v.contentDetails.duration);
 
-videoRes.items.forEach(v=>{
-const views=+v.statistics.viewCount;
-const subs=+v.statistics.channelSubscriberCount || 0;
-const ratio=subs? (views/subs):0;
+    // ✅ 수정된 기준
+    const isShort = dur > 0 && dur < 240;        // 4분 미만
+    const isMid   = dur >= 240 && dur < 600;     // 4~10분
+    const isLong  = dur >= 600;                  // 10분 이상
 
-let delta="-";
-let buff=false;
+    if(type==="short" && !isShort) return;
+    if(type==="mid" && !isMid) return;
+    if(type==="long" && !isLong) return;
 
-const prev=snapshot[v.id];
-if(prev){
-const hours=(now-prev.ts)/(1000*60*60);
-if(hours>=24){
-const diff=views-prev.views;
-delta=diff.toLocaleString();
-if(diff>0 && (diff/prev.views>0.3 || ratio>=3)) buff=true;
-}
-}
+    const views = Number(v.statistics.viewCount || 0);
+    const snapKey = "snap_"+v.id;
+    const prev = Number(localStorage.getItem(snapKey) || 0);
 
-nextSnapshot[v.id]={views,ts:now};
+    let buff=false;
+    if(prev>0){
+      const diff = views - prev;
+      if(diff > prev*0.3 || diff > 5000) buff=true;
+    }
+    localStorage.setItem(snapKey, views);
 
-result.innerHTML+=`
-<a class="card" 
-   href="https://www.youtube.com/watch?v=${v.id}" 
-   target="_blank" 
-   style="text-decoration:none;color:inherit">
+    const label = isShort ? "쇼츠" : isMid ? "미드폼" : "롱폼";
 
-<img class="thumb" src="${v.snippet.thumbnails.medium.url}">
-<div>
-  <div>
-    <span class="badge">영상</span>
-    ${buff?'<span class="badge buff">📈 밀리는 중</span>':""}
-  </div>
-  <b>${v.snippet.title}</b>
-  <div class="small">조회수 ${views.toLocaleString()}</div>
-  <div class="small">구독자 대비 조회수 ${ratio.toFixed(1)}x</div>
-  <div class="small">48시간 증가량 ${delta}</div>
-</div>
-
-</a>`;;
-});
-
-saveSnapshot(nextSnapshot);
+    result.innerHTML += `
+    <a href="https://www.youtube.com/watch?v=${v.id}" target="_blank">
+      <div class="card">
+        <img class="thumb" src="${v.snippet.thumbnails.medium.url}">
+        <div>
+          <div>
+            <span class="badge">${label}</span>
+            ${buff ? '<span class="badge buff">밀리는 중</span>' : ''}
+          </div>
+          <b>${v.snippet.title}</b>
+          <div class="small">조회수 ${views.toLocaleString()}</div>
+        </div>
+      </div>
+    </a>`;
+  });
 }
 </script>
 </body>
