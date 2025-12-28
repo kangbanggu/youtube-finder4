@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>SmartTube Finder A단계</title>
+<title>SmartTube Finder (A+B)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -19,130 +19,124 @@ label{font-size:13px;color:#555}
 .thumb{width:100%;border-radius:8px}
 .small{font-size:13px;color:#555}
 .badge{display:inline-block;background:#eee;padding:4px 8px;border-radius:20px;font-size:12px;margin-right:6px}
+.buff{background:#dcfce7;color:#046c4e;font-weight:700}
+a{text-decoration:none;color:inherit}
 </style>
 </head>
 
 <body>
 <div class="wrap">
-<h1>📊 SmartTube Finder (A단계)</h1>
+<h1>📊 SmartTube Finder (A+B)</h1>
 
 <div class="box">
-  <div class="row">
-    <input id="q" placeholder="검색어 (예: 시니어 복지, 노인 사연)" style="flex:1">
-    <button id="searchBtn">검색</button>
-  </div>
+<div class="row">
+<input id="q" placeholder="검색어 (예: 시니어 복지, 노인 사연)" style="flex:1">
+<button onclick="search()">검색</button>
+</div>
 
-  <div class="row" style="margin-top:10px">
-    <div>
-      <label>구분</label>
-      <select id="type">
-        <option value="all">전체</option>
-        <option value="short">쇼츠</option>
-        <option value="mid">미드폼 (4분 이상)</option>
-        <option value="long">롱폼 (10분 이상)</option>
-      </select>
-    </div>
+<div class="row" style="margin-top:10px">
+<div>
+<label>구분</label>
+<select id="type">
+<option value="all">전체</option>
+<option value="short">쇼츠</option>
+<option value="mid">미드폼</option>
+<option value="long">롱폼</option>
+</select>
+</div>
 
-    <div>
-      <label>업로드 기간</label>
-      <select id="period">
-        <option value="30" selected>1개월</option>
-        <option value="7">1주</option>
-        <option value="90">3개월</option>
-      </select>
-    </div>
-  </div>
+<div>
+<label>업로드 기간</label>
+<select id="period">
+<option value="30" selected>1개월</option>
+<option value="7">1주</option>
+<option value="90">3개월</option>
+</select>
+</div>
+</div>
 </div>
 
 <div class="box">
-  <div class="section">📊 검색 결과</div>
-  <div id="result"></div>
+<div class="section">📊 검색 결과</div>
+<div id="result"></div>
 </div>
 </div>
 
 <script>
-/* =========================
-   🔑 API KEY 여기만 확인
-   ========================= */
 const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
 
-/* ========================= */
+function isoToSec(t){
+let h=/(\d+)H/.exec(t)?.[1]||0;
+let m=/(\d+)M/.exec(t)?.[1]||0;
+let s=/(\d+)S/.exec(t)?.[1]||0;
+return h*3600+m*60+s*1;
+}
+
+async function search(){
+result.innerHTML="";
+const q=qEl.value.trim();
+if(!q) return alert("검색어를 입력하세요");
+
+const type=typeEl.value;
+const period=periodEl.value;
+const after=new Date(Date.now()-period*86400000).toISOString();
+
+const s=await fetch(
+`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${encodeURIComponent(q)}&publishedAfter=${after}&key=${API_KEY}`
+).then(r=>r.json());
+
+const ids=s.items.map(i=>i.id.videoId).join(",");
+if(!ids) return;
+
+const v=await fetch(
+`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${API_KEY}`
+).then(r=>r.json());
+
+v.items.forEach(it=>{
+const dur=isoToSec(it.contentDetails.duration);
+
+const isShort = dur < 240;
+const isMid   = dur >= 240 && dur < 600;
+const isLong  = dur >= 600;
+
+if(type==="short" && !isShort) return;
+if(type==="mid" && !isMid) return;
+if(type==="long" && !isLong) return;
+
+const views = Number(it.statistics.viewCount||0);
+const snapKey = "snap_"+it.id;
+const prev = localStorage.getItem(snapKey);
+let isBoost = false;
+
+if(prev){
+  const diff = views - Number(prev);
+  if(diff > views*0.3) isBoost = true; // 24시간 급증 기준
+}
+localStorage.setItem(snapKey, views);
+
+const label = isShort?"쇼츠":isMid?"미드폼":"롱폼";
+const videoUrl = "https://www.youtube.com/watch?v=" + it.id;
+
+result.innerHTML += `
+<a href="${videoUrl}" target="_blank">
+<div class="card">
+<img class="thumb" src="${it.snippet.thumbnails.medium.url}">
+<div>
+<span class="badge">${label}</span>
+${isBoost?'<span class="badge buff">📈 밀리기 시작</span>':""}
+<b>${it.snippet.title}</b>
+<div class="small">조회수 ${views.toLocaleString()}</div>
+</div>
+</div>
+</a>
+`;
+});
+}
 
 const qEl = document.getElementById("q");
 const typeEl = document.getElementById("type");
 const periodEl = document.getElementById("period");
-const resultEl = document.getElementById("result");
-const searchBtn = document.getElementById("searchBtn");
-
-function isoToSec(t){
-  let h=/(\d+)H/.exec(t)?.[1]||0;
-  let m=/(\d+)M/.exec(t)?.[1]||0;
-  let s=/(\d+)S/.exec(t)?.[1]||0;
-  return h*3600 + m*60 + s*1;
-}
-
-searchBtn.addEventListener("click", search);
-
-async function search(){
-  resultEl.innerHTML = "";
-
-  const q = qEl.value.trim();
-  if(!q){
-    alert("검색어를 입력하세요");
-    return;
-  }
-
-  const type = typeEl.value;
-  const period = Number(periodEl.value);
-  const publishedAfter = new Date(Date.now() - period*86400000).toISOString();
-
-  const searchUrl =
-    `https://www.googleapis.com/youtube/v3/search?` +
-    `part=snippet&type=video&maxResults=25&q=${encodeURIComponent(q)}` +
-    `&publishedAfter=${publishedAfter}&key=${API_KEY}`;
-
-  const s = await fetch(searchUrl).then(r=>r.json());
-  if(s.error){
-    alert(s.error.message);
-    return;
-  }
-
-  const ids = s.items.map(i=>i.id.videoId).join(",");
-  if(!ids) return;
-
-  const videoUrl =
-    `https://www.googleapis.com/youtube/v3/videos?` +
-    `part=snippet,statistics,contentDetails&id=${ids}&key=${API_KEY}`;
-
-  const v = await fetch(videoUrl).then(r=>r.json());
-
-  v.items.forEach(it=>{
-    const sec = isoToSec(it.contentDetails.duration);
-
-    const isShort = sec < 240;
-    const isMid   = sec >= 240 && sec < 600;
-    const isLong  = sec >= 600;
-
-    if(type==="short" && !isShort) return;
-    if(type==="mid" && !isMid) return;
-    if(type==="long" && !isLong) return;
-
-    const views = Number(it.statistics.viewCount || 0);
-
-    resultEl.innerHTML += `
-      <div class="card">
-        <img class="thumb" src="${it.snippet.thumbnails.medium.url}">
-        <div>
-          <span class="badge">
-            ${isShort?"쇼츠":isMid?"미드폼":"롱폼"}
-          </span>
-          <b>${it.snippet.title}</b>
-          <div class="small">조회수 ${views.toLocaleString()}</div>
-        </div>
-      </div>
-    `;
-  });
-}
+const result = document.getElementById("result");
 </script>
 </body>
 </html>
