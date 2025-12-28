@@ -2,8 +2,9 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<title>SmartTube Finder A단계 (완성)</title>
+<title>SmartTube Finder A단계</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
 body{font-family:Noto Sans KR,Arial;background:#f5f7fb;margin:0;padding:16px}
 .wrap{max-width:1100px;margin:auto}
@@ -12,15 +13,12 @@ h1{text-align:center;color:#e60023}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 input,select,button{padding:8px;border-radius:8px;border:1px solid #ccc;font-size:14px}
 button{background:#e60023;color:#fff;border:none;cursor:pointer}
+label{font-size:13px;color:#555}
 .section{margin-top:10px;font-weight:700}
-.card{display:grid;grid-template-columns:160px 1fr;gap:10px;padding:10px;border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:10px;cursor:pointer}
+.card{display:grid;grid-template-columns:160px 1fr;gap:10px;padding:10px;border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:10px}
 .thumb{width:100%;border-radius:8px}
 .small{font-size:13px;color:#555}
 .badge{display:inline-block;background:#eee;padding:4px 8px;border-radius:20px;font-size:12px;margin-right:6px}
-.short{background:#e0f2fe;color:#075985}
-.mid{background:#fef9c3;color:#854d0e}
-.long{background:#ede9fe;color:#4c1d95}
-.buff{background:#dcfce7;color:#046c4e;font-weight:700}
 </style>
 </head>
 
@@ -29,77 +27,121 @@ button{background:#e60023;color:#fff;border:none;cursor:pointer}
 <h1>📊 SmartTube Finder (A단계)</h1>
 
 <div class="box">
-<div class="row">
-<input id="q" placeholder="검색어" style="flex:1">
-<button onclick="search()">검색</button>
-</div>
+  <div class="row">
+    <input id="q" placeholder="검색어 (예: 시니어 복지, 노인 사연)" style="flex:1">
+    <button id="searchBtn">검색</button>
+  </div>
+
+  <div class="row" style="margin-top:10px">
+    <div>
+      <label>구분</label>
+      <select id="type">
+        <option value="all">전체</option>
+        <option value="short">쇼츠</option>
+        <option value="mid">미드폼 (4분 이상)</option>
+        <option value="long">롱폼 (10분 이상)</option>
+      </select>
+    </div>
+
+    <div>
+      <label>업로드 기간</label>
+      <select id="period">
+        <option value="30" selected>1개월</option>
+        <option value="7">1주</option>
+        <option value="90">3개월</option>
+      </select>
+    </div>
+  </div>
 </div>
 
 <div class="box">
-<div class="section">📊 밀리기 시작한 영상</div>
-<div id="result"></div>
+  <div class="section">📊 검색 결과</div>
+  <div id="result"></div>
 </div>
 </div>
 
 <script>
-const API_KEY="AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
+/* =========================
+   🔑 API KEY 여기만 확인
+   ========================= */
+const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
+
+/* ========================= */
+
+const qEl = document.getElementById("q");
+const typeEl = document.getElementById("type");
+const periodEl = document.getElementById("period");
+const resultEl = document.getElementById("result");
+const searchBtn = document.getElementById("searchBtn");
 
 function isoToSec(t){
-let h=/(\d+)H/.exec(t)?.[1]||0
-let m=/(\d+)M/.exec(t)?.[1]||0
-let s=/(\d+)S/.exec(t)?.[1]||0
-return h*3600+m*60+s*1
+  let h=/(\d+)H/.exec(t)?.[1]||0;
+  let m=/(\d+)M/.exec(t)?.[1]||0;
+  let s=/(\d+)S/.exec(t)?.[1]||0;
+  return h*3600 + m*60 + s*1;
 }
+
+searchBtn.addEventListener("click", search);
 
 async function search(){
-result.innerHTML=""
-const q=document.getElementById("q").value.trim()
-if(!q)return alert("검색어 입력")
+  resultEl.innerHTML = "";
 
-const after=new Date(Date.now()-7*86400000).toISOString()
+  const q = qEl.value.trim();
+  if(!q){
+    alert("검색어를 입력하세요");
+    return;
+  }
 
-const s=await fetch(
-`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${q}&publishedAfter=${after}&key=${API_KEY}`
-).then(r=>r.json())
+  const type = typeEl.value;
+  const period = Number(periodEl.value);
+  const publishedAfter = new Date(Date.now() - period*86400000).toISOString();
 
-const ids=s.items.map(i=>i.id.videoId).join(",")
-const v=await fetch(
-`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${API_KEY}`
-).then(r=>r.json())
+  const searchUrl =
+    `https://www.googleapis.com/youtube/v3/search?` +
+    `part=snippet&type=video&maxResults=25&q=${encodeURIComponent(q)}` +
+    `&publishedAfter=${publishedAfter}&key=${API_KEY}`;
 
-v.items.forEach(it=>{
-const dur=isoToSec(it.contentDetails.duration)
-let type="", cls=""
+  const s = await fetch(searchUrl).then(r=>r.json());
+  if(s.error){
+    alert(s.error.message);
+    return;
+  }
 
-if(dur<60){ type="쇼츠"; cls="short" }
-else if(dur>=240 && dur<600){ type="미드폼"; cls="mid" }
-else if(dur>=600){ type="롱폼"; cls="long" }
-else return
+  const ids = s.items.map(i=>i.id.videoId).join(",");
+  if(!ids) return;
 
-const views=+it.statistics.viewCount
-const key="snap_"+it.id
-const prev=localStorage.getItem(key)
-let buff=false
+  const videoUrl =
+    `https://www.googleapis.com/youtube/v3/videos?` +
+    `part=snippet,statistics,contentDetails&id=${ids}&key=${API_KEY}`;
 
-if(prev){
-const diff=views-prev
-if(diff>=prev*0.5) buff=true
-}
-localStorage.setItem(key,views)
+  const v = await fetch(videoUrl).then(r=>r.json());
 
-if(!buff) return
+  v.items.forEach(it=>{
+    const sec = isoToSec(it.contentDetails.duration);
 
-result.innerHTML+=`
-<div class="card" onclick="window.open('https://www.youtube.com/watch?v=${it.id}','_blank')">
-<img class="thumb" src="${it.snippet.thumbnails.medium.url}">
-<div>
-<span class="badge ${cls}">${type}</span>
-<span class="badge buff">🔥 밀리기 시작</span>
-<b>${it.snippet.title}</b>
-<div class="small">조회수 ${views.toLocaleString()}</div>
-</div>
-</div>`
-})
+    const isShort = sec < 240;
+    const isMid   = sec >= 240 && sec < 600;
+    const isLong  = sec >= 600;
+
+    if(type==="short" && !isShort) return;
+    if(type==="mid" && !isMid) return;
+    if(type==="long" && !isLong) return;
+
+    const views = Number(it.statistics.viewCount || 0);
+
+    resultEl.innerHTML += `
+      <div class="card">
+        <img class="thumb" src="${it.snippet.thumbnails.medium.url}">
+        <div>
+          <span class="badge">
+            ${isShort?"쇼츠":isMid?"미드폼":"롱폼"}
+          </span>
+          <b>${it.snippet.title}</b>
+          <div class="small">조회수 ${views.toLocaleString()}</div>
+        </div>
+      </div>
+    `;
+  });
 }
 </script>
 </body>
