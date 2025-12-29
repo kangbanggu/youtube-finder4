@@ -1,206 +1,126 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <title>YouTube 채널 밀림 감지기 E단계</title>
+<meta charset="utf-8">
+<title>SmartTube Finder (Base)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #eef1f5;
-      padding: 20px;
-    }
-
-    h1 {
-      margin-bottom: 10px;
-    }
-
-    /* 검색 영역 */
-    .search-box {
-      background: #ffffff;
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    input {
-      padding: 10px;
-      width: 280px;
-      font-size: 14px;
-    }
-
-    button {
-      padding: 10px 16px;
-      margin-left: 5px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    /* 결과 박스 */
-    .result-box {
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 15px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    }
-
-    .result-title {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 12px;
-      border-bottom: 2px solid #ddd;
-      padding-bottom: 8px;
-    }
-
-    /* 영상 카드 */
-    .video-card {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      background: #f9fafc;
-      cursor: pointer;
-      border-left: 6px solid transparent;
-    }
-
-    .video-card:hover {
-      background: #e6f0ff;
-    }
-
-    .video-title {
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    /* 배지 */
-    .badge {
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      color: #fff;
-      font-weight: bold;
-    }
-
-    .warning {
-      background: #ff9800;
-    }
-
-    .danger {
-      background: #e53935;
-    }
-
-    .warning-border {
-      border-left-color: #ff9800;
-    }
-
-    .danger-border {
-      border-left-color: #e53935;
-    }
-
-    /* API 안내 */
-    .api-info {
-      margin-top: 20px;
-      font-size: 13px;
-      color: #333;
-      background: #fff3cd;
-      padding: 12px;
-      border-radius: 8px;
-    }
-  </style>
+<style>
+body{font-family:Noto Sans KR,Arial;background:#f5f7fb;margin:0;padding:16px}
+.wrap{max-width:1100px;margin:auto}
+h1{text-align:center;color:#e60023}
+.box{background:#fff;padding:14px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.06);margin-bottom:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input,select,button{padding:8px;border-radius:8px;border:1px solid #ccc;font-size:14px}
+button{background:#e60023;color:#fff;border:none;cursor:pointer}
+label{font-size:13px;color:#555}
+.section{margin-top:10px;font-weight:700}
+.card{display:grid;grid-template-columns:160px 1fr;gap:10px;padding:10px;border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:10px}
+.thumb{width:100%;border-radius:8px}
+.small{font-size:13px;color:#555}
+.badge{display:inline-block;background:#eee;padding:4px 8px;border-radius:20px;font-size:12px;margin-right:6px}
+a{text-decoration:none;color:inherit}
+</style>
 </head>
 
 <body>
+<div class="wrap">
+<h1>📊 SmartTube Finder</h1>
 
-<h1>📉 유튜브 채널 밀림 감지기 (E단계)</h1>
+<div class="box">
+  <div class="row">
+    <input id="q" placeholder="검색어 (예: 시니어 복지)" style="flex:1">
+    <button onclick="search()">검색</button>
+  </div>
 
-<div class="search-box">
-  <input id="keyword" placeholder="검색 키워드 입력" />
-  <button onclick="run()">검색 실행</button>
+  <div class="row" style="margin-top:10px">
+    <div>
+      <label>구분</label>
+      <select id="type">
+        <option value="all">전체</option>
+        <option value="short">쇼츠</option>
+        <option value="mid">미드폼 (4분↑)</option>
+        <option value="long">롱폼 (10분↑)</option>
+      </select>
+    </div>
+
+    <div>
+      <label>업로드 기간</label>
+      <select id="period">
+        <option value="7">1주</option>
+        <option value="30" selected>1개월</option>
+        <option value="90">3개월</option>
+      </select>
+    </div>
+  </div>
 </div>
 
-<div id="result"></div>
-
-<div class="api-info">
-  🔑 <b>YouTube API KEY 위치</b><br>
-  아래 JS 코드의 <b>YOUR_API_KEY</b> 자리에 키 입력하면 실제 데이터 연동 가능
+<div class="box">
+  <div class="section">🔍 검색 결과</div>
+  <div id="result"></div>
+</div>
 </div>
 
 <script>
-/* ===============================
-   🔑 YouTube API KEY
-   =============================== */
-const YOUTUBE_API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8"; // ← 여기에 입력
+const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
 
-/* ===============================
-   테스트용 더미 데이터
-   =============================== */
-const videos = [
-  {
-    title: "2026년 기초연금 바뀝니다",
-    views: [18000, 11000, 6000],
-    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-  },
-  {
-    title: "노인 일자리 대폭 축소 현실",
-    views: [20000, 9000, 4000],
-    url: "https://www.youtube.com/watch?v=9bZkp7q19f0"
-  }
-];
-
-/* ===============================
-   밀림 단계 판별 (2단계)
-   =============================== */
-function detectStage(views) {
-  if (views[2] < views[1] && views[1] < views[0]) {
-    return 2; // 위험
-  }
-  return 1; // 주의
+function isoToSec(t){
+  let h=/(\d+)H/.exec(t)?.[1]||0;
+  let m=/(\d+)M/.exec(t)?.[1]||0;
+  let s=/(\d+)S/.exec(t)?.[1]||0;
+  return h*3600 + m*60 + s*1;
 }
 
-/* ===============================
-   실행
-   =============================== */
-function run() {
-  const container = document.getElementById("result");
-  container.innerHTML = "";
+async function search(){
+  const q = document.getElementById("q").value.trim();
+  const type = document.getElementById("type").value;
+  const period = document.getElementById("period").value;
+  const result = document.getElementById("result");
+  result.innerHTML = "";
 
-  const box = document.createElement("div");
-  box.className = "result-box";
+  if(!q){ alert("검색어를 입력하세요"); return; }
 
-  const title = document.createElement("div");
-  title.className = "result-title";
-  title.innerText = "📊 채널 밀림 감지 결과 (E단계)";
-  box.appendChild(title);
+  const after = new Date(Date.now() - period*86400000).toISOString();
 
-  videos.forEach(video => {
-    const stage = detectStage(video.views);
+  const s = await fetch(
+    `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${encodeURIComponent(q)}&publishedAfter=${after}&key=${API_KEY}`
+  ).then(r=>r.json());
 
-    const card = document.createElement("div");
-    card.className = "video-card " + (stage === 2 ? "danger-border" : "warning-border");
+  const ids = s.items.map(i=>i.id.videoId).join(",");
+  if(!ids) return;
 
-    card.onclick = () => {
-      window.open(video.url, "_blank");
-    };
+  const v = await fetch(
+    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids}&key=${API_KEY}`
+  ).then(r=>r.json());
 
-    const name = document.createElement("div");
-    name.className = "video-title";
-    name.innerText = video.title;
+  v.items.forEach(it=>{
+    const dur = isoToSec(it.contentDetails.duration);
 
-    const badge = document.createElement("div");
-    badge.className = "badge " + (stage === 2 ? "danger" : "warning");
-    badge.innerText = stage === 2 ? "위험 단계" : "주의 단계";
+    const isShort = dur < 240;
+    const isMid   = dur >= 240 && dur < 600;
+    const isLong  = dur >= 600;
 
-    card.appendChild(name);
-    card.appendChild(badge);
-    box.appendChild(card);
+    if(type==="short" && !isShort) return;
+    if(type==="mid" && !isMid) return;
+    if(type==="long" && !isLong) return;
+
+    const label = isShort?"쇼츠":isMid?"미드폼":"롱폼";
+
+    result.innerHTML += `
+    <a href="https://www.youtube.com/watch?v=${it.id}" target="_blank">
+      <div class="card">
+        <img class="thumb" src="${it.snippet.thumbnails.medium.url}">
+        <div>
+          <span class="badge">${label}</span>
+          <b>${it.snippet.title}</b>
+          <div class="small">
+            조회수 ${Number(it.statistics.viewCount).toLocaleString()}
+          </div>
+        </div>
+      </div>
+    </a>`;
   });
-
-  container.appendChild(box);
 }
 </script>
-
 </body>
 </html>
