@@ -2,12 +2,12 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>YouTube 채널 밀림 감지기 (E단계)</title>
+  <title>YouTube 채널 밀림 감지기 E단계</title>
 
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4f6f8;
+      background: #eef1f5;
       padding: 20px;
     }
 
@@ -15,134 +15,191 @@
       margin-bottom: 10px;
     }
 
+    /* 검색 영역 */
     .search-box {
+      background: #ffffff;
+      padding: 15px;
+      border-radius: 10px;
       margin-bottom: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
     input {
-      padding: 8px;
-      width: 300px;
+      padding: 10px;
+      width: 280px;
+      font-size: 14px;
     }
 
     button {
-      padding: 8px 14px;
+      padding: 10px 16px;
+      margin-left: 5px;
       cursor: pointer;
-    }
-
-    .section {
-      background: #fff;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-
-    .section-title {
       font-weight: bold;
-      margin-bottom: 10px;
     }
 
-    .video {
+    /* 결과 박스 */
+    .result-box {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .result-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 8px;
+    }
+
+    /* 영상 카드 */
+    .video-card {
       display: flex;
       justify-content: space-between;
-      padding: 10px;
-      border-bottom: 1px solid #eee;
+      align-items: center;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      background: #f9fafc;
       cursor: pointer;
+      border-left: 6px solid transparent;
     }
 
-    .video:hover {
-      background: #f0f8ff;
+    .video-card:hover {
+      background: #e6f0ff;
     }
 
+    .video-title {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* 배지 */
     .badge {
-      padding: 4px 8px;
-      border-radius: 6px;
-      color: white;
+      padding: 6px 10px;
+      border-radius: 8px;
       font-size: 12px;
+      color: #fff;
+      font-weight: bold;
     }
 
-    .level-1 {
-      background: orange;
+    .warning {
+      background: #ff9800;
     }
 
-    .level-2 {
-      background: red;
+    .danger {
+      background: #e53935;
+    }
+
+    .warning-border {
+      border-left-color: #ff9800;
+    }
+
+    .danger-border {
+      border-left-color: #e53935;
+    }
+
+    /* API 안내 */
+    .api-info {
+      margin-top: 20px;
+      font-size: 13px;
+      color: #333;
+      background: #fff3cd;
+      padding: 12px;
+      border-radius: 8px;
     }
   </style>
 </head>
 
 <body>
 
-<h1>📉 유튜브 채널 밀림 감지 (E단계)</h1>
+<h1>📉 유튜브 채널 밀림 감지기 (E단계)</h1>
 
 <div class="search-box">
   <input id="keyword" placeholder="검색 키워드 입력" />
-  <button onclick="search()">검색</button>
+  <button onclick="run()">검색 실행</button>
 </div>
 
-<!-- 결과 영역 -->
 <div id="result"></div>
 
+<div class="api-info">
+  🔑 <b>YouTube API KEY 위치</b><br>
+  아래 JS 코드의 <b>YOUR_API_KEY</b> 자리에 키 입력하면 실제 데이터 연동 가능
+</div>
+
 <script>
-  // 예시 데이터 (API 붙이기 전 테스트용)
-  const videos = [
-    {
-      title: "기초연금 2026년 변경",
-      views: [12000, 8000, 5000],
-      url: "https://www.youtube.com/watch?v=VIDEO1"
-    },
-    {
-      title: "노인 일자리 대폭 축소",
-      views: [15000, 9000, 3000],
-      url: "https://www.youtube.com/watch?v=VIDEO2"
-    }
-  ];
+/* ===============================
+   🔑 YouTube API KEY
+   =============================== */
+const YOUTUBE_API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8"; // ← 여기에 입력
 
-  function detectLevel(views) {
-    if (views[2] < views[1] && views[1] < views[0]) {
-      return 2; // 위험
-    }
-    if (views[2] < views[1]) {
-      return 1; // 주의
-    }
-    return 0;
+/* ===============================
+   테스트용 더미 데이터
+   =============================== */
+const videos = [
+  {
+    title: "2026년 기초연금 바뀝니다",
+    views: [18000, 11000, 6000],
+    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  },
+  {
+    title: "노인 일자리 대폭 축소 현실",
+    views: [20000, 9000, 4000],
+    url: "https://www.youtube.com/watch?v=9bZkp7q19f0"
   }
+];
 
-  function search() {
-    const result = document.getElementById("result");
-    result.innerHTML = "";
-
-    const section = document.createElement("div");
-    section.className = "section";
-
-    const title = document.createElement("div");
-    title.className = "section-title";
-    title.innerText = "🔍 밀림 감지 결과";
-    section.appendChild(title);
-
-    videos.forEach(v => {
-      const level = detectLevel(v.views);
-
-      if (level > 0) {
-        const row = document.createElement("div");
-        row.className = "video";
-        row.onclick = () => window.open(v.url, "_blank");
-
-        const name = document.createElement("div");
-        name.innerText = v.title;
-
-        const badge = document.createElement("span");
-        badge.className = "badge " + (level === 1 ? "level-1" : "level-2");
-        badge.innerText = level === 1 ? "주의" : "위험";
-
-        row.appendChild(name);
-        row.appendChild(badge);
-        section.appendChild(row);
-      }
-    });
-
-    result.appendChild(section);
+/* ===============================
+   밀림 단계 판별 (2단계)
+   =============================== */
+function detectStage(views) {
+  if (views[2] < views[1] && views[1] < views[0]) {
+    return 2; // 위험
   }
+  return 1; // 주의
+}
+
+/* ===============================
+   실행
+   =============================== */
+function run() {
+  const container = document.getElementById("result");
+  container.innerHTML = "";
+
+  const box = document.createElement("div");
+  box.className = "result-box";
+
+  const title = document.createElement("div");
+  title.className = "result-title";
+  title.innerText = "📊 채널 밀림 감지 결과 (E단계)";
+  box.appendChild(title);
+
+  videos.forEach(video => {
+    const stage = detectStage(video.views);
+
+    const card = document.createElement("div");
+    card.className = "video-card " + (stage === 2 ? "danger-border" : "warning-border");
+
+    card.onclick = () => {
+      window.open(video.url, "_blank");
+    };
+
+    const name = document.createElement("div");
+    name.className = "video-title";
+    name.innerText = video.title;
+
+    const badge = document.createElement("div");
+    badge.className = "badge " + (stage === 2 ? "danger" : "warning");
+    badge.innerText = stage === 2 ? "위험 단계" : "주의 단계";
+
+    card.appendChild(name);
+    card.appendChild(badge);
+    box.appendChild(card);
+  });
+
+  container.appendChild(box);
+}
 </script>
 
 </body>
