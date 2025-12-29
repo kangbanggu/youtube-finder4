@@ -1,100 +1,149 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<title>SmartTube Finder (E단계 완성)</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <title>YouTube 채널 밀림 감지기 (E단계)</title>
 
-<style>
-body{font-family:Noto Sans KR,Arial;background:#f5f7fb;margin:0;padding:16px}
-.wrap{max-width:1100px;margin:auto}
-h1{text-align:center;color:#e60023}
-.box{background:#fff;padding:14px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.06);margin-bottom:14px}
-.row{display:flex;gap:8px;flex-wrap:wrap}
-input,button{padding:8px;border-radius:8px;border:1px solid #ccc;font-size:14px}
-button{background:#e60023;color:#fff;border:none;cursor:pointer}
-.section{margin-top:10px;font-weight:700}
-.card{padding:12px;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:10px}
-.small{font-size:13px;color:#555}
-.badge{display:inline-block;background:#eee;padding:4px 8px;border-radius:20px;font-size:12px;margin-right:6px}
-.channelBuff{background:#fee2e2;color:#991b1b;font-weight:800}
-a{text-decoration:none;color:inherit}
-</style>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .search-box {
+      margin-bottom: 20px;
+    }
+
+    input {
+      padding: 8px;
+      width: 300px;
+    }
+
+    button {
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+
+    .section {
+      background: #fff;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .section-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .video {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+
+    .video:hover {
+      background: #f0f8ff;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      color: white;
+      font-size: 12px;
+    }
+
+    .level-1 {
+      background: orange;
+    }
+
+    .level-2 {
+      background: red;
+    }
+  </style>
 </head>
 
 <body>
-<div class="wrap">
-<h1>📊 SmartTube Finder – 채널 밀림 감지 (E단계)</h1>
 
-<div class="box">
-<div class="row">
-<input id="q" placeholder="검색어 (예: 시니어 복지, 노인 사연)" style="flex:1">
-<button onclick="search()">검색</button>
-</div>
+<h1>📉 유튜브 채널 밀림 감지 (E단계)</h1>
+
+<div class="search-box">
+  <input id="keyword" placeholder="검색 키워드 입력" />
+  <button onclick="search()">검색</button>
 </div>
 
-<div class="box">
-<div class="section">🚀 유튜브가 밀기 시작한 채널</div>
+<!-- 결과 영역 -->
 <div id="result"></div>
-</div>
-</div>
 
 <script>
-const API_KEY = "AIzaSyBMA6UbKczjPJkqExjd4_evvq3nUz-Agi8";
+  // 예시 데이터 (API 붙이기 전 테스트용)
+  const videos = [
+    {
+      title: "기초연금 2026년 변경",
+      views: [12000, 8000, 5000],
+      url: "https://www.youtube.com/watch?v=VIDEO1"
+    },
+    {
+      title: "노인 일자리 대폭 축소",
+      views: [15000, 9000, 3000],
+      url: "https://www.youtube.com/watch?v=VIDEO2"
+    }
+  ];
 
-async function search(){
-result.innerHTML="";
-const q=document.getElementById("q").value.trim();
-if(!q) return alert("검색어를 입력하세요");
+  function detectLevel(views) {
+    if (views[2] < views[1] && views[1] < views[0]) {
+      return 2; // 위험
+    }
+    if (views[2] < views[1]) {
+      return 1; // 주의
+    }
+    return 0;
+  }
 
-const after=new Date(Date.now()-30*86400000).toISOString();
+  function search() {
+    const result = document.getElementById("result");
+    result.innerHTML = "";
 
-const s=await fetch(
-`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${encodeURIComponent(q)}&publishedAfter=${after}&key=${API_KEY}`
-).then(r=>r.json());
+    const section = document.createElement("div");
+    section.className = "section";
 
-if(!s.items) return;
+    const title = document.createElement("div");
+    title.className = "section-title";
+    title.innerText = "🔍 밀림 감지 결과";
+    section.appendChild(title);
 
-const ids=s.items.map(i=>i.id.videoId).join(",");
-if(!ids) return;
+    videos.forEach(v => {
+      const level = detectLevel(v.views);
 
-const v=await fetch(
-`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids}&key=${API_KEY}`
-).then(r=>r.json());
+      if (level > 0) {
+        const row = document.createElement("div");
+        row.className = "video";
+        row.onclick = () => window.open(v.url, "_blank");
 
-let channels={};
+        const name = document.createElement("div");
+        name.innerText = v.title;
 
-v.items.forEach(it=>{
-const views=Number(it.statistics.viewCount||0);
-const snapKey="snap_"+it.id;
-const prev=Number(localStorage.getItem(snapKey)||0);
-const diff=prev?views-prev:0;
-localStorage.setItem(snapKey,views);
+        const badge = document.createElement("span");
+        badge.className = "badge " + (level === 1 ? "level-1" : "level-2");
+        badge.innerText = level === 1 ? "주의" : "위험";
 
-const chId=it.snippet.channelId;
-if(!channels[chId]){
-channels[chId]={name:it.snippet.channelTitle,videos:[]};
-}
-channels[chId].videos.push({diff,views});
-});
+        row.appendChild(name);
+        row.appendChild(badge);
+        section.appendChild(row);
+      }
+    });
 
-/* 🔥 채널 밀림 판단 (1~2개 기준) */
-Object.values(channels).forEach(ch=>{
-const rising=ch.videos.filter(v=>v.diff>0);
-const avgDiff=rising.reduce((a,b)=>a+b.diff,0)/(rising.length||1);
-
-if(rising.length >= 1 && avgDiff > 500){
-result.innerHTML+=`
-<div class="card">
-<span class="badge channelBuff">🚀 채널 밀림 감지</span>
-<b>${ch.name}</b>
-<div class="small">
-상승 영상 ${rising.length}개 · 평균 증가 +${Math.floor(avgDiff).toLocaleString()}
-</div>
-</div>`;
-}
-});
-}
+    result.appendChild(section);
+  }
 </script>
+
 </body>
 </html>
